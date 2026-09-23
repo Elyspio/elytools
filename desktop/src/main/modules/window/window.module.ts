@@ -51,7 +51,7 @@ export class WindowModule extends LogModule {
 		});
 
 		mainWindow.webContents.setWindowOpenHandler((details) => {
-			shell.openExternal(details.url);
+			void shell.openExternal(details.url);
 			return { action: "deny" };
 		});
 
@@ -59,7 +59,7 @@ export class WindowModule extends LogModule {
 		// this.trayIconModule.createTrayIcon(mainWindow);
 
 		mainWindow.on("close", () => {
-			this.windowPositionModule.setByWindow(mainWindow);
+			void this.windowPositionModule.setByWindow(mainWindow);
 		});
 
 		mainWindow.show();

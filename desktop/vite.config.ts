@@ -14,7 +14,8 @@ export default defineConfig({
 	},
 	lint: {
 		...defaultLintConfig,
-		ignorePatterns: [...defaultLintConfig.ignorePatterns, ...ignorePatterns],
+		// core/apis holds the NSwag client of the removed web API: nothing imports it and axios is not a dependency anymore.
+		ignorePatterns: [...defaultLintConfig.ignorePatterns, ...ignorePatterns, "src/renderer/src/core/apis/**"],
 	},
 	resolve: {
 		alias: convertPathToAlias(tsconfigNode.compilerOptions.paths, path.resolve(import.meta.dirname)),

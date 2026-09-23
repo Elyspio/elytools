@@ -100,7 +100,7 @@ export function SshSidebar({
 								event.preventDefault();
 								onDragOver(folder.id);
 							}}
-							onDrop={(event) => void onMachineDrop(event, folder.id)}
+							onDrop={(event) => onMachineDrop(event, folder.id)}
 						>
 							<Stack
 								direction={"row"}
@@ -117,7 +117,7 @@ export function SshSidebar({
 									<IconButton size="small" onClick={() => onOpenEditFolder(folder)}>
 										<EditIcon sx={{ fontSize: 16 }} />
 									</IconButton>
-									<IconButton size="small" onClick={() => void onRemoveFolder(folder.id)}>
+									<IconButton size="small" onClick={() => onRemoveFolder(folder.id)}>
 										<DeleteOutlineIcon sx={{ fontSize: 16 }} />
 									</IconButton>
 								</Stack>
@@ -134,8 +134,8 @@ export function SshSidebar({
 										folderName={folder.name}
 										onEdit={() => onOpenEditMachine(machine)}
 										onDuplicate={() => onDuplicateMachine(machine)}
-										onDelete={() => void onRemoveMachine(machine.id)}
-										onConnect={() => void onConnectMachine(machine.id)}
+										onDelete={() => onRemoveMachine(machine.id)}
+										onConnect={() => onConnectMachine(machine.id)}
 										onDragStart={(event) => {
 											event.dataTransfer.effectAllowed = "move";
 											event.dataTransfer.setData("text/plain", machine.id);
@@ -155,7 +155,7 @@ export function SshSidebar({
 							event.preventDefault();
 							onDragOver(null);
 						}}
-						onDrop={(event) => void onMachineDrop(event, null)}
+						onDrop={(event) => onMachineDrop(event, null)}
 					>
 						<Stack
 							direction={"row"}
@@ -182,8 +182,8 @@ export function SshSidebar({
 									dragging={draggingMachineId === machine.id}
 									onEdit={() => onOpenEditMachine(machine)}
 									onDuplicate={() => onDuplicateMachine(machine)}
-									onDelete={() => void onRemoveMachine(machine.id)}
-									onConnect={() => void onConnectMachine(machine.id)}
+									onDelete={() => onRemoveMachine(machine.id)}
+									onConnect={() => onConnectMachine(machine.id)}
 									onDragStart={(event) => {
 										event.dataTransfer.effectAllowed = "move";
 										event.dataTransfer.setData("text/plain", machine.id);

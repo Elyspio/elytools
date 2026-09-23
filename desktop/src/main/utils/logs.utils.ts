@@ -136,12 +136,7 @@ function getFunctionArgs(func: Function) {
 	try {
 		const source = String(func);
 		// Filter to printable ASCII (plus tab/LF/CR) only
-		if (
-			![...source].every((c) => {
-				const code = c.charCodeAt(0);
-				return code === 9 || code === 10 || code === 13 || (code >= 32 && code <= 126);
-			})
-		) {
+		if (/[^\t\n\r -~]/.test(source)) {
 			return [];
 		}
 

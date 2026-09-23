@@ -142,7 +142,7 @@ export function getIpcSender() {
 					await ipcRendererWrapper.invoke("auth:oidc:login:start");
 				},
 				cancelLogin: () => {
-					ipcRendererWrapper.invoke("auth:oidc:login:cancel");
+					void ipcRendererWrapper.invoke("auth:oidc:login:cancel");
 				},
 				logout: async () => {
 					await ipcRendererWrapper.invoke("auth:oidc:logout");

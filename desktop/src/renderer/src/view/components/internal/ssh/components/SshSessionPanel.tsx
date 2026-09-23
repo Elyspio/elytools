@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Box, IconButton, InputBase, LinearProgress, Stack, Tooltip, Typography } from "@mui/material";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import CloudDownloadIcon from "@mui/icons-material/CloudDownload";
@@ -47,10 +47,13 @@ export function SshSessionPanel({ sessionId, session, machine, loading, active, 
 	const [pathInput, setPathInput] = useState(session.path);
 	const [showHidden, setShowHidden] = useState(false);
 
-	useEffect(() => {
+	// Reset the path editor when the session navigates (adjusting state during render instead of in an effect)
+	const [syncedPath, setSyncedPath] = useState(session.path);
+	if (syncedPath !== session.path) {
+		setSyncedPath(session.path);
 		setEditingPath(false);
 		setPathInput(session.path);
-	}, [session.path]);
+	}
 
 	const visibleEntries = showHidden ? session.entries : session.entries.filter((e) => !e.name.startsWith("."));
 

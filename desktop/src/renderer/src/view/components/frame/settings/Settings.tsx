@@ -44,13 +44,15 @@ export const Settings: React.FC<OwnProps> = ({ close, isOpen }) => {
 
 	useEffect(() => {
 		if (!isOpen) return;
-		void refreshAuthStatus();
-	}, [isOpen, refreshAuthStatus]);
+		void window.preload.ipc.send.auth.oidc.status().then(setAuthStatus);
+	}, [isOpen]);
 
-	useEffect(() => {
-		if (!isOpen || !config?.frame || !config?.endpoints) return;
-		setDraftConfig(config);
-	}, [config, isOpen]);
+	// Sync the draft from the store while the dialog is open (adjusting state during render instead of in an effect)
+	const [draftSyncedFrom, setDraftSyncedFrom] = useState<{ config: typeof config; isOpen: boolean } | null>(null);
+	if (draftSyncedFrom === null || draftSyncedFrom.config !== config || draftSyncedFrom.isOpen !== isOpen) {
+		setDraftSyncedFrom({ config, isOpen });
+		if (isOpen && config?.frame && config?.endpoints) setDraftConfig(config);
+	}
 
 	const updateDraft = useCallback((updater: (draft: LatestConfig) => LatestConfig) => {
 		setDraftConfig((prev) => {
