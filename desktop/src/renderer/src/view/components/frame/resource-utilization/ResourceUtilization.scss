@@ -1,54 +1,54 @@
 @use "../../variables" as *;
 
 .ResourceUtilization {
-  display: flex;
-  justify-content: center;
-  gap: 24px;
-  -webkit-app-region: drag;
-  align-items: center;
-  width: 100%;
-  height: 24px;
-  flex-shrink: 0;
-  background-color: var(--surface-0);
-  border-top: 1px solid var(--border-subtle);
+	display: flex;
+	justify-content: center;
+	gap: 24px;
+	-webkit-app-region: drag;
+	align-items: center;
+	width: 100%;
+	height: 24px;
+	flex-shrink: 0;
+	background-color: var(--surface-0);
+	border-top: 1px solid var(--border-subtle);
 }
 
 .ResourceUtilization__metric {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+	display: flex;
+	align-items: center;
+	gap: 6px;
 }
 
 .ResourceUtilization__label {
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-  min-width: 24px;
+	font-family: var(--font-mono);
+	font-size: 0.7rem;
+	font-weight: 500;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: var(--text-faint);
+	min-width: 24px;
 }
 
 .ResourceUtilization__bar {
-  width: 48px;
-  height: 3px;
-  border-radius: 1.5px;
-  background-color: rgba(255, 255, 255, 0.08);
-  overflow: hidden;
+	width: 48px;
+	height: 3px;
+	border-radius: 1.5px;
+	background-color: rgba(255, 255, 255, 0.08);
+	overflow: hidden;
 }
 
 .ResourceUtilization__bar-fill {
-  height: 100%;
-  border-radius: 1.5px;
-  transition:
-    width 300ms ease,
-    background-color 300ms ease;
+	height: 100%;
+	border-radius: 1.5px;
+	transition:
+		width 300ms ease,
+		background-color 300ms ease;
 }
 
 .ResourceUtilization__value {
-  font-family: var(--font-mono);
-  font-size: 0.6rem;
-  color: var(--text-faint);
-  min-width: 28px;
-  text-align: right;
+	font-family: var(--font-mono);
+	font-size: 0.6rem;
+	color: var(--text-faint);
+	min-width: 28px;
+	text-align: right;
 }

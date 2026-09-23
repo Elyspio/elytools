@@ -14,13 +14,13 @@ import { useEffect } from "react";
  * The clean-up function clears the interval using `clearInterval` to prevent the interval from continuing to run when the component is not mounted.
  */
 export function useInterval(fn: () => any, timeout = 1000, deps: any[]) {
-  useEffect(() => {
-    fn();
-    const interval = setInterval(fn, timeout);
+	useEffect(() => {
+		fn();
+		const interval = setInterval(fn, timeout);
 
-    return () => {
-      clearInterval(interval);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
+		return () => {
+			clearInterval(interval);
+		};
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, deps);
 }

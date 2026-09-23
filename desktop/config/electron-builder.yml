@@ -2,40 +2,40 @@ appId: fr.elyspio.elytools.app
 productName: Elytools
 electronUpdaterCompatibility: ">=2.16"
 directories:
-  buildResources: build
-  output: dist
+    buildResources: build
+    output: dist
 files:
-  - "!**/.vscode/*"
-  - "!src/*"
-  - "!electron.vite.config.{js,ts,mjs,cjs}"
-  - "!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}"
-  - "!{.env,.env.*,pnpm-lock.yaml}"
-  - "!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}"
-  - "!node_modules/**/*"
+    - "!**/.vscode/*"
+    - "!src/*"
+    - "!electron.vite.config.{js,ts,mjs,cjs}"
+    - "!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}"
+    - "!{.env,.env.*,pnpm-lock.yaml}"
+    - "!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}"
+    - "!node_modules/**/*"
 asarUnpack:
-  - resources/**
+    - resources/**
 win:
-  executableName: Elytools
+    executableName: Elytools
 nsis:
-  artifactName: ${name}-${version}-setup.${ext}
-  shortcutName: ${productName}
-  uninstallDisplayName: ${productName}
-  createDesktopShortcut: always
+    artifactName: ${name}-${version}-setup.${ext}
+    shortcutName: ${productName}
+    uninstallDisplayName: ${productName}
+    createDesktopShortcut: always
 linux:
-  target:
-    - AppImage
-    - deb
-  maintainer: jona.guich69@gmail.com
-  category: Utility
+    target:
+        - AppImage
+        - deb
+    maintainer: jona.guich69@gmail.com
+    category: Utility
 appImage:
-  artifactName: ${name}-${version}.${ext}
+    artifactName: ${name}-${version}.${ext}
 publish:
-  provider: github
-  owner: Elyspio
-  repo: elytools
-  releaseType: release
+    provider: github
+    owner: Elyspio
+    repo: elytools
+    releaseType: release
 electronFuses:
-  # Enable ASAR integrity validation
-  enableEmbeddedAsarIntegrityValidation: true
-  # (Optional, but recommended) Ensure Electron only loads app code from app.asar
-  onlyLoadAppFromAsar: true
+    # Enable ASAR integrity validation
+    enableEmbeddedAsarIntegrityValidation: true
+    # (Optional, but recommended) Ensure Electron only loads app code from app.asar
+    onlyLoadAppFromAsar: true

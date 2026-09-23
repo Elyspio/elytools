@@ -13,33 +13,32 @@ const cpuFeaturesShim = path.join(__dirname, "shims", "cpu-features.js");
 const nodeAlias = convertPathToAlias(tsconfigNode.compilerOptions.paths, basePath);
 const rendererAlias = convertPathToAlias(tsconfigWeb.compilerOptions.paths, basePath);
 
-
 export default defineConfig({
-  main: {
-    build: {
-      externalizeDeps: false,
-      bytecode: !disableMainBytecode,
-    },
-    resolve: {
-      alias: {
-        ...nodeAlias,
-        "cpu-features": cpuFeaturesShim,
-        "cpu-features/lib/index": cpuFeaturesShim,
-      },
-    },
-  },
-  preload: {
-    build: {
-      bytecode: false,
-    },
-    resolve: {
-      alias: nodeAlias,
-    },
-  },
-  renderer: {
-    resolve: {
-      alias: rendererAlias,
-    },
-    plugins: [svgr(), react()],
-  },
+	main: {
+		build: {
+			externalizeDeps: false,
+			bytecode: !disableMainBytecode,
+		},
+		resolve: {
+			alias: {
+				...nodeAlias,
+				"cpu-features": cpuFeaturesShim,
+				"cpu-features/lib/index": cpuFeaturesShim,
+			},
+		},
+	},
+	preload: {
+		build: {
+			bytecode: false,
+		},
+		resolve: {
+			alias: nodeAlias,
+		},
+	},
+	renderer: {
+		resolve: {
+			alias: rendererAlias,
+		},
+		plugins: [svgr(), react()],
+	},
 });

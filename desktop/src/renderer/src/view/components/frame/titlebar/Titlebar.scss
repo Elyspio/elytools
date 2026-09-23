@@ -1,68 +1,68 @@
 @use "../../variables" as *;
 
 #Titlebar {
-  -webkit-app-region: drag;
-  min-height: $titlebarHeight;
-  height: $titlebarHeight;
-  flex-shrink: 0;
-  overflow: hidden;
-  background-color: var(--surface-0);
-  border-bottom: 1px solid var(--border-subtle);
+	-webkit-app-region: drag;
+	min-height: $titlebarHeight;
+	height: $titlebarHeight;
+	flex-shrink: 0;
+	overflow: hidden;
+	background-color: var(--surface-0);
+	border-bottom: 1px solid var(--border-subtle);
 
-  button,
-  a {
-    -webkit-app-region: no-drag;
-  }
+	button,
+	a {
+		-webkit-app-region: no-drag;
+	}
 }
 
 .Titlebar__appname {
-  font-weight: 600;
-  font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.5);
-  letter-spacing: 0.02em;
-  user-select: none;
-  cursor: grab;
+	font-weight: 600;
+	font-size: 0.75rem;
+	color: rgba(255, 255, 255, 0.5);
+	letter-spacing: 0.02em;
+	user-select: none;
+	cursor: grab;
 }
 
 .Titlebar__separator {
-  font-size: 0.7rem;
-  color: rgba(255, 255, 255, 0.2);
-  user-select: none;
+	font-size: 0.7rem;
+	color: rgba(255, 255, 255, 0.2);
+	user-select: none;
 }
 
 .Titlebar__subtitle {
-  font-size: 0.7rem;
-  color: rgba(255, 255, 255, 0.35);
-  user-select: none;
+	font-size: 0.7rem;
+	color: rgba(255, 255, 255, 0.35);
+	user-select: none;
 }
 
 .Titlebar__back {
-  width: 24px;
-  height: 24px;
-  color: rgba(255, 255, 255, 0.35);
+	width: 24px;
+	height: 24px;
+	color: rgba(255, 255, 255, 0.35);
 
-  &:hover {
-    color: rgba(255, 255, 255, 0.7);
-    background-color: rgba(255, 255, 255, 0.04);
-  }
+	&:hover {
+		color: rgba(255, 255, 255, 0.7);
+		background-color: rgba(255, 255, 255, 0.04);
+	}
 }
 
 .Titlebar__control {
-  width: 28px;
-  height: 28px;
-  border-radius: 4px;
-  color: rgba(255, 255, 255, 0.4);
-  transition: all 120ms ease;
+	width: 28px;
+	height: 28px;
+	border-radius: 4px;
+	color: rgba(255, 255, 255, 0.4);
+	transition: all 120ms ease;
 
-  &:hover {
-    color: rgba(255, 255, 255, 0.8);
-    background-color: rgba(255, 255, 255, 0.06);
-  }
+	&:hover {
+		color: rgba(255, 255, 255, 0.8);
+		background-color: rgba(255, 255, 255, 0.06);
+	}
 }
 
 .Titlebar__close {
-  &:hover {
-    color: #fff;
-    background-color: #e81123;
-  }
+	&:hover {
+		color: #fff;
+		background-color: #e81123;
+	}
 }

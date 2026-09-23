@@ -1,76 +1,76 @@
 .Settings {
-  height: 70vh;
-  min-height: 400px;
+	height: 70vh;
+	min-height: 400px;
 }
 
 .Settings__layout {
-  height: 100%;
+	height: 100%;
 }
 
 .Settings__sidebar {
-  width: 180px;
-  min-width: 180px;
-  border-right: 1px solid var(--border-subtle);
-  padding: 16px 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  background-color: var(--surface-0);
+	width: 180px;
+	min-width: 180px;
+	border-right: 1px solid var(--border-subtle);
+	padding: 16px 8px;
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	background-color: var(--surface-0);
 }
 
 .Settings__sidebar-title {
-  font-weight: 600;
-  font-size: 0.75rem;
-  letter-spacing: 0.02em;
-  color: rgba(255, 255, 255, 0.5);
-  padding: 4px 10px 12px;
+	font-weight: 600;
+	font-size: 0.75rem;
+	letter-spacing: 0.02em;
+	color: rgba(255, 255, 255, 0.5);
+	padding: 4px 10px 12px;
 }
 
 .Settings__sidebar-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  border-left: 2px solid transparent;
-  transition: all 120ms ease;
-  user-select: none;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 6px 10px;
+	border-radius: 6px;
+	cursor: pointer;
+	font-size: 0.8rem;
+	color: var(--text-muted);
+	border-left: 2px solid transparent;
+	transition: all 120ms ease;
+	user-select: none;
 
-  &:hover {
-    background-color: rgba(255, 255, 255, 0.03);
-    color: rgba(255, 255, 255, 0.7);
-  }
+	&:hover {
+		background-color: rgba(255, 255, 255, 0.03);
+		color: rgba(255, 255, 255, 0.7);
+	}
 
-  &--active {
-    background-color: var(--surface-2);
-    color: rgba(255, 255, 255, 0.9);
-    border-left-color: #4fd2ff;
-  }
+	&--active {
+		background-color: var(--surface-2);
+		color: rgba(255, 255, 255, 0.9);
+		border-left-color: #4fd2ff;
+	}
 }
 
 .Settings__content {
-  flex: 1;
-  padding: 20px 24px;
-  overflow-y: auto;
+	flex: 1;
+	padding: 20px 24px;
+	overflow-y: auto;
 }
 
 .Settings__section-title {
-  font-weight: 600;
-  font-size: 0.65rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: rgba(79, 210, 255, 0.7);
+	font-weight: 600;
+	font-size: 0.65rem;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: rgba(79, 210, 255, 0.7);
 }
 
 .Settings__field-group {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  background-color: var(--surface-1);
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-  padding: 16px;
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	background-color: var(--surface-1);
+	border: 1px solid var(--border-subtle);
+	border-radius: 8px;
+	padding: 16px;
 }

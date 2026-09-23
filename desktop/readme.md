@@ -8,16 +8,16 @@ It combines media-focused tools (video encoding and torrent workflow) with deskt
 
 - **Encoder**: video conversion/probing pipeline powered by ffmpeg IPC modules.
 - **Torrent**:
-  - search on `nyaa.si` from the app,
-  - send torrents to qBittorrent through an OAuth2-protected endpoint.
+    - search on `nyaa.si` from the app,
+    - send torrents to qBittorrent through an OAuth2-protected endpoint.
 - **OIDC login flow in-app**:
-  - opens a dedicated BrowserWindow,
-  - handles callback via app custom protocol (`elytools://...`),
-  - stores refresh token encrypted with Electron Safe Storage.
+    - opens a dedicated BrowserWindow,
+    - handles callback via app custom protocol (`elytools://...`),
+    - stores refresh token encrypted with Electron Safe Storage.
 - **Settings UI**:
-  - full editable local app config (`version: 2`),
-  - endpoint and OIDC parameters,
-  - frame/appboard/window position settings.
+    - full editable local app config (`version: 2`),
+    - endpoint and OIDC parameters,
+    - frame/appboard/window position settings.
 - **Desktop app plumbing**: typed preload bridge, strict IPC contracts, logger, and updater integration.
 
 ## Tech Stack

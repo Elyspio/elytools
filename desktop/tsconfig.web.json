@@ -1,30 +1,30 @@
 {
-  "extends": "@electron-toolkit/tsconfig/tsconfig.web.json",
-  "include": ["./config", "./src/renderer", "./src/preload", "./src/shared"],
-  "compilerOptions": {
-    "composite": true,
-    "jsx": "react-jsx",
-    "tsBuildInfoFile": "dist/.tsbuild.web.info",
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
-    "useDefineForClassFields": false,
-    "lib": ["ESNext", "DOM"],
-    "target": "ESNext",
-    "paths": {
-      "@/*": ["./src/renderer/src/*"],
-      "@apis/*": ["./src/renderer/src/core/apis/*"],
-      "@components/*": ["./src/renderer/src/view/components/*"],
-      "@core/*": ["./src/renderer/src/core/*"],
-      "@hooks/*": ["./src/renderer/src/view/hooks/*"],
-      "@main/*": ["./src/main/*"],
-      "@modules/*": ["./src/renderer/src/store/module/*"],
-      "@preload/*": ["./src/preload/*"],
-      "@resources/*": ["./resources/*"],
-      "@services/*": ["./src/renderer/src/core/services/*"],
-      "@shared/*": ["./src/shared/*"],
-      "@store": ["./src/renderer/src/store/index.ts"],
-      "@store/*": ["./src/renderer/src/store/*"],
-      "@view/*": ["./src/renderer/src/view/*"]
-    }
-  }
+	"extends": "@electron-toolkit/tsconfig/tsconfig.web.json",
+	"include": ["./config", "./src/renderer", "./src/preload", "./src/shared"],
+	"compilerOptions": {
+		"composite": true,
+		"jsx": "react-jsx",
+		"tsBuildInfoFile": "dist/.tsbuild.web.info",
+		"experimentalDecorators": true,
+		"emitDecoratorMetadata": true,
+		"useDefineForClassFields": false,
+		"lib": ["ESNext", "DOM"],
+		"target": "ESNext",
+		"paths": {
+			"@/*": ["./src/renderer/src/*"],
+			"@apis/*": ["./src/renderer/src/core/apis/*"],
+			"@components/*": ["./src/renderer/src/view/components/*"],
+			"@core/*": ["./src/renderer/src/core/*"],
+			"@hooks/*": ["./src/renderer/src/view/hooks/*"],
+			"@main/*": ["./src/main/*"],
+			"@modules/*": ["./src/renderer/src/store/module/*"],
+			"@preload/*": ["./src/preload/*"],
+			"@resources/*": ["./resources/*"],
+			"@services/*": ["./src/renderer/src/core/services/*"],
+			"@shared/*": ["./src/shared/*"],
+			"@store": ["./src/renderer/src/store/index.ts"],
+			"@store/*": ["./src/renderer/src/store/*"],
+			"@view/*": ["./src/renderer/src/view/*"]
+		}
+	}
 }
