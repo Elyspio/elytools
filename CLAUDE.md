@@ -21,14 +21,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 |------|---------|
 | Install deps | `pnpm install` |
 | Dev mode | `pnpm dev` |
-| Build + package | `pnpm build` (runs typecheck → electron-vite build → electron-builder) |
+| Build | `pnpm build` (electron-vite build) |
 | Preview built app | `pnpm start` |
-| Lint (fix) | `pnpm lint` |
-| Format | `pnpm format` |
+| Check (fmt + lint + types) | `pnpm check` (`vp check`) |
+| Lint | `pnpm lint` (`vp lint`, Oxlint type-aware) |
+| Format | `pnpm fmt` (`vp fmt`, Oxfmt) |
+| Test | `pnpm test` (`vp test`) |
 | Typecheck (watch) | `pnpm typecheck` |
 | Release (Win+Linux) | `pnpm release` |
 
-Package manager: **pnpm 10.32.1**. Vite config at `config/electron.vite.config.ts`, builder config at `config/electron-builder.yml`.
+Package manager: **pnpm 12.5.1**, Node **26+**. Build/dev use electron-vite (`config/electron.vite.config.ts`), builder config at `config/electron-builder.yml`. The vite-plus toolchain (fmt/lint/test) is configured in `vite.config.ts`; `vite` is aliased to `@voidzero-dev/vite-plus-core` via the pnpm catalog.
 
 ## Architecture
 
@@ -61,4 +63,4 @@ Cached JSON at `%LOCALAPPDATA%/elytools/config/` (Linux: `~/.config/elytools/con
 - Keep renderer/main shared types under `desktop/src/shared`
 - FFmpeg features require `ffmpeg`/`ffprobe` on PATH (no bundled binary)
 - Desktop uses TypeScript decorators (`experimentalDecorators`, `emitDecoratorMetadata`)
-- ESLint config: `@elyspio/vite-eslint-config`; Prettier: `@elyspio` shared config
+- Lint/format config: `defaultLintConfig` / `defaultFmtConfig` from `@elyspio/vite-eslint-config` (Oxlint + Oxfmt through vite-plus)

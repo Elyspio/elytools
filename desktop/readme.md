@@ -23,7 +23,8 @@ It combines media-focused tools (video encoding and torrent workflow) with deskt
 ## Tech Stack
 
 - **Desktop runtime**: Electron 40
-- **Bundling**: electron-vite + Vite
+- **Bundling**: electron-vite on vite-plus-core (Vite 8)
+- **Toolchain**: vite-plus (Oxlint, Oxfmt, Vitest)
 - **Frontend**: React 19, MUI 7, Redux Toolkit
 - **Dependency injection**: Inversify
 - **Main-process modules**: TypeScript classes + IPC handlers
@@ -45,8 +46,8 @@ config/
 
 ### Prerequisites
 
-- Node.js 20+
-- pnpm 10
+- Node.js 26+
+- pnpm 12.5.1
 
 ### Install
 
@@ -89,8 +90,10 @@ pnpm start
 - `pnpm dev` — run Electron app in dev mode
 - `pnpm build` — build app
 - `pnpm start` — preview built app
-- `pnpm lint` — lint and auto-fix (project-wide)
-- `pnpm format` — run Prettier
+- `pnpm check` — format check, lint and type check (`vp check`)
+- `pnpm lint` — Oxlint, type-aware (`vp lint`)
+- `pnpm fmt` — Oxfmt (`vp fmt`)
+- `pnpm test` — unit tests (`vp test`)
 - `pnpm typecheck` — watch mode TS checks
 
 ## Configuration

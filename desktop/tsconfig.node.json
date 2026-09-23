@@ -7,7 +7,8 @@
     "./src/shared",
     "tsconfig.web.json",
     "tsconfig.node.json",
-    "scripts"
+    "scripts",
+    "vite.config.ts"
   ],
   "compilerOptions": {
     "composite": true,
