@@ -15,6 +15,12 @@ import { execFile } from "node:child_process";
 
 @injectable()
 export class FileModule extends LogModule {
+  /**
+   * Since Electron 43, open dialogs default to the Downloads folder when no `defaultPath` is given
+   * and the OS no longer restores the last-used directory, so it is tracked here instead.
+   */
+  private lastDialogPath: string | undefined;
+
   constructor() {
     super("FileModule");
   }
@@ -24,11 +30,14 @@ export class FileModule extends LogModule {
     returnFiles,
   }: GetFolderOptions<WithFiles>): Promise<GetFolderResult<WithFiles>> {
     const { filePaths } = await dialog.showOpenDialog({
+      defaultPath: this.lastDialogPath,
       properties: ["openDirectory"],
     });
     const folderPath = filePaths.at(0);
 
     if (!folderPath) return null;
+
+    this.lastDialogPath = path.dirname(folderPath);
 
     let files: Dirent[] | undefined;
 
@@ -73,12 +82,15 @@ export class FileModule extends LogModule {
     }
 
     const { filePaths, canceled } = await dialog.showOpenDialog({
+      defaultPath: this.lastDialogPath,
       properties,
     });
 
     if (canceled || filePaths.length === 0) {
       return null;
     }
+
+    this.lastDialogPath = path.dirname(filePaths[0]);
 
     return filePaths;
   }

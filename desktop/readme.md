@@ -22,10 +22,10 @@ It combines media-focused tools (video encoding and torrent workflow) with deskt
 
 ## Tech Stack
 
-- **Desktop runtime**: Electron 40
+- **Desktop runtime**: Electron 44
 - **Bundling**: electron-vite on vite-plus-core (Vite 8)
 - **Toolchain**: vite-plus (Oxlint, Oxfmt, Vitest)
-- **Frontend**: React 19, MUI 7, Redux Toolkit
+- **Frontend**: React 19, MUI 9, Redux Toolkit, React Router 8
 - **Dependency injection**: Inversify
 - **Main-process modules**: TypeScript classes + IPC handlers
 - **Media/system**: ffmpeg/ffprobe, systeminformation

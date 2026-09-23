@@ -38,7 +38,7 @@ Package manager: **pnpm 12.5.1**, Node **26+**. Build/dev use electron-vite (`co
 
 - **Main process** (`src/main/`): Node.js, modules extending `LogModule` for Winston logging, Inversify DI with `autobind: true` (`src/main/di/container.di.ts`).
 - **Preload** (`src/preload/`): Exposes typed `window.preload.ipc` bridge via contextBridge.
-- **Renderer** (`src/renderer/`): React 19, MUI 7, Redux Toolkit, Inversify for services.
+- **Renderer** (`src/renderer/`): React 19, MUI 9, Redux Toolkit, React Router 8, Inversify for services.
 - **Shared types** (`src/shared/`): IPC channel contracts, config defaults, TypeScript interfaces.
 
 ### IPC Contract
