@@ -1,11 +1,17 @@
-FROM electronuserland/builder:22
+FROM node:26-bookworm
 
-ARG PNPM_VERSION=10.32.1
+ARG PNPM_VERSION=12.5.1
 WORKDIR /project/desktop
 
+# electronuserland/builder stops at Node 24: install the few system tools electron-builder needs for AppImage/deb targets
+RUN apt-get update \
+	&& apt-get install -y --no-install-recommends fakeroot \
+	&& rm -rf /var/lib/apt/lists/*
+
+# Node 25+ images ship without corepack
 RUN npm install -g pnpm@${PNPM_VERSION}
 
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
 RUN pnpm install --frozen-lockfile
 
