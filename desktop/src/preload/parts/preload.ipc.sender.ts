@@ -10,6 +10,7 @@ import { Stats } from "node:fs";
 import { FfmpegConvertOptions } from "@shared/types/ffmpeg.types";
 import { NyaaTorrentItem, TorrentAddResult } from "@shared/types/torrent.types";
 import { OidcAuthStatus } from "@shared/types/auth.types";
+import { LlmUsageStatus } from "@shared/types/llm-usage.types";
 import { SelectPathsOptions } from "@shared/types/dialog.types";
 import { SshCommandRequest, SshCommandRun, SshDirectoryListing, SshMachine, SshMachineInput, SshTransfer } from "@shared/types/ssh.types";
 
@@ -150,6 +151,14 @@ export function getIpcSender() {
 				status: async (): Promise<OidcAuthStatus> => {
 					return await ipcRendererWrapper.invoke("auth:oidc:status:get");
 				},
+			},
+		},
+		llmUsage: {
+			status: async (): Promise<LlmUsageStatus> => {
+				return await ipcRendererWrapper.invoke("llm-usage:status:get");
+			},
+			sync: async (): Promise<LlmUsageStatus> => {
+				return await ipcRendererWrapper.invoke("llm-usage:sync");
 			},
 		},
 		ssh: {

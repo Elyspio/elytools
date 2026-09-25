@@ -24,9 +24,9 @@ export type SshConfiguration = {
 	folders: SshFolderConfiguration[];
 };
 
-export type LocalConfig = LocalConfigV1 | LocalConfigV2 | LocalConfigV3 | LocalConfigV4;
+export type LocalConfig = LocalConfigV1 | LocalConfigV2 | LocalConfigV3 | LocalConfigV4 | LocalConfigV5;
 
-export type LatestConfig = LocalConfigV4;
+export type LatestConfig = LocalConfigV5;
 
 export type PositionWindowKey = "main";
 
@@ -46,6 +46,17 @@ export type OidcConfiguration = {
 	clientSecret: string;
 	scopes: string;
 	redirectPath: string;
+};
+
+/**
+ * Upload of the Claude Code and Codex token usage of this workstation to LLM Usage Monitor.
+ */
+export type LlmUsageConfiguration = {
+	enabled: boolean;
+	/** Origin of LLM Usage Monitor, e.g. https://monitor.llm.elyspio.fr */
+	apiBaseUrl: string;
+	/** Label of this workstation in the Usage page. */
+	machineName: string;
 };
 
 export type QBittorrentConfiguration = {
@@ -96,4 +107,9 @@ export type LocalConfigV4 = Omit<LocalConfigV3, "version" | "ssh"> & {
 	version: 4;
 	ssh: SshConfiguration;
 };
+export type LocalConfigV5 = Omit<LocalConfigV4, "version"> & {
+	version: 5;
+	llmUsage: LlmUsageConfiguration;
+};
+
 export type WindowPosition = Pick<BrowserWindowConstructorOptions, "x" | "y" | "width" | "height">;
