@@ -1,8 +1,8 @@
 # Elytools
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
-[![Node.js](https://img.shields.io/badge/Node.js-20+-68a063?logo=node.js&logoColor=white)](https://nodejs.org/)
-[![Electron](https://img.shields.io/badge/Electron-40+-47848F?logo=electron&logoColor=white)](https://www.electronjs.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-26+-68a063?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![Electron](https://img.shields.io/badge/Electron-44-47848F?logo=electron&logoColor=white)](https://www.electronjs.org/)
 [![React](https://img.shields.io/badge/React-19+-61dafb?logo=react&logoColor=black)](https://react.dev/)
 [![.NET](https://img.shields.io/badge/.NET-10.0-512bd4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
 

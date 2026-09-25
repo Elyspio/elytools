@@ -8,23 +8,24 @@ It combines media-focused tools (video encoding and torrent workflow) with deskt
 
 - **Encoder**: video conversion/probing pipeline powered by ffmpeg IPC modules.
 - **Torrent**:
-  - search on `nyaa.si` from the app,
-  - send torrents to qBittorrent through an OAuth2-protected endpoint.
+    - search on `nyaa.si` from the app,
+    - send torrents to qBittorrent through an OAuth2-protected endpoint.
 - **OIDC login flow in-app**:
-  - opens a dedicated BrowserWindow,
-  - handles callback via app custom protocol (`elytools://...`),
-  - stores refresh token encrypted with Electron Safe Storage.
+    - opens a dedicated BrowserWindow,
+    - handles callback via app custom protocol (`elytools://...`),
+    - stores refresh token encrypted with Electron Safe Storage.
 - **Settings UI**:
-  - full editable local app config (`version: 2`),
-  - endpoint and OIDC parameters,
-  - frame/appboard/window position settings.
+    - full editable local app config (`version: 2`),
+    - endpoint and OIDC parameters,
+    - frame/appboard/window position settings.
 - **Desktop app plumbing**: typed preload bridge, strict IPC contracts, logger, and updater integration.
 
 ## Tech Stack
 
-- **Desktop runtime**: Electron 40
-- **Bundling**: electron-vite + Vite
-- **Frontend**: React 19, MUI 7, Redux Toolkit
+- **Desktop runtime**: Electron 44
+- **Bundling**: electron-vite on vite-plus-core (Vite 8)
+- **Toolchain**: vite-plus (Oxlint, Oxfmt, Vitest)
+- **Frontend**: React 19, MUI 9, Redux Toolkit, React Router 8
 - **Dependency injection**: Inversify
 - **Main-process modules**: TypeScript classes + IPC handlers
 - **Media/system**: ffmpeg/ffprobe, systeminformation
@@ -45,8 +46,8 @@ config/
 
 ### Prerequisites
 
-- Node.js 20+
-- pnpm 10
+- Node.js 26+
+- pnpm 12.5.1
 
 ### Install
 
@@ -89,8 +90,10 @@ pnpm start
 - `pnpm dev` — run Electron app in dev mode
 - `pnpm build` — build app
 - `pnpm start` — preview built app
-- `pnpm lint` — lint and auto-fix (project-wide)
-- `pnpm format` — run Prettier
+- `pnpm check` — format check, lint and type check (`vp check`)
+- `pnpm lint` — Oxlint, type-aware (`vp lint`)
+- `pnpm fmt` — Oxfmt (`vp fmt`)
+- `pnpm test` — unit tests (`vp test`)
 - `pnpm typecheck` — watch mode TS checks
 
 ## Configuration

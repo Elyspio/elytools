@@ -7,16 +7,16 @@ import { StyledEngineProvider, ThemeProvider } from "@mui/material";
 import { Frame } from "@components/frame/Frame";
 
 export function Root() {
-  return (
-    <StyledEngineProvider injectFirst>
-      <ThemeProvider theme={theme}>
-        <Provider store={store}>
-          <Frame>
-            <Outlet />
-          </Frame>
-          <ToastContainer theme={"dark"} position={"top-right"} className={"no-autoresize"} />
-        </Provider>
-      </ThemeProvider>
-    </StyledEngineProvider>
-  );
+	return (
+		<StyledEngineProvider injectFirst>
+			<ThemeProvider theme={theme}>
+				<Provider store={store}>
+					<Frame>
+						<Outlet />
+					</Frame>
+					<ToastContainer theme={"dark"} position={"top-right"} className={"no-autoresize"} />
+				</Provider>
+			</ThemeProvider>
+		</StyledEngineProvider>
+	);
 }

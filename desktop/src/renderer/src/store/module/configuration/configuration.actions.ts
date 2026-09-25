@@ -3,5 +3,4 @@ import { ConfigurationState } from "@modules/configuration/configuration.types";
 
 const createAction = createActionGenerator("configuration");
 
-export const setSystemInformation =
-  createAction<Required<ConfigurationState["system"]>>("info/set");
+export const setSystemInformation = createAction<Required<ConfigurationState["system"]>>("info/set");

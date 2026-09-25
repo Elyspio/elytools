@@ -7,86 +7,86 @@ import type { TorrentAddResult } from "@shared/types/torrent.types";
 
 @injectable()
 export class QBittorrentModule extends LogModule {
-  public constructor(
-    @inject(ConfigModule) private readonly configModule: ConfigModule,
-    @inject(OidcModule) private readonly oidcModule: OidcModule,
-  ) {
-    super("QBittorrentModule");
-  }
+	public constructor(
+		@inject(ConfigModule) private readonly configModule: ConfigModule,
+		@inject(OidcModule) private readonly oidcModule: OidcModule
+	) {
+		super("QBittorrentModule");
+	}
 
-  @log()
-  public async getExistingHashes(): Promise<string[]> {
-    const token = await this.oidcModule.getAccessToken();
-    const config = await this.configModule.getConfig();
-    const apiBaseUrl = config.endpoints.qbittorrent.apiBaseUrl.trim();
+	@log()
+	public async getExistingHashes(): Promise<string[]> {
+		const token = await this.oidcModule.getAccessToken();
+		const config = await this.configModule.getConfig();
+		const apiBaseUrl = config.endpoints.qbittorrent.apiBaseUrl.trim();
 
-    if (!apiBaseUrl) {
-      throw new Error("qBittorrent API base URL is not configured");
-    }
+		if (!apiBaseUrl) {
+			throw new Error("qBittorrent API base URL is not configured");
+		}
 
-    const endpoint = `${apiBaseUrl.replace(/\/$/, "")}/api/v2/torrents/info`;
-    const response = await fetch(endpoint, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+		const endpoint = `${apiBaseUrl.replace(/\/$/, "")}/api/v2/torrents/info`;
+		const response = await fetch(endpoint, {
+			headers: { Authorization: `Bearer ${token}` },
+		});
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch torrents list (${response.status})`);
-    }
+		if (!response.ok) {
+			throw new Error(`Failed to fetch torrents list (${response.status})`);
+		}
 
-    const torrents = (await response.json()) as { hash: string }[];
-    return torrents.map((t) => t.hash.toLowerCase());
-  }
+		const torrents = (await response.json()) as { hash: string }[];
+		return torrents.map((t) => t.hash.toLowerCase());
+	}
 
-  @log()
-  public async addTorrentFromUrl(torrentUrl: string, infoHash?: string): Promise<TorrentAddResult> {
-    const token = await this.oidcModule.getAccessToken();
-    const config = await this.configModule.getConfig();
-    const apiBaseUrl = config.endpoints.qbittorrent.apiBaseUrl.trim();
+	@log()
+	public async addTorrentFromUrl(torrentUrl: string, infoHash?: string): Promise<TorrentAddResult> {
+		const token = await this.oidcModule.getAccessToken();
+		const config = await this.configModule.getConfig();
+		const apiBaseUrl = config.endpoints.qbittorrent.apiBaseUrl.trim();
 
-    if (!apiBaseUrl) {
-      throw new Error("qBittorrent API base URL is not configured");
-    }
+		if (!apiBaseUrl) {
+			throw new Error("qBittorrent API base URL is not configured");
+		}
 
-    if (infoHash) {
-      const existingHashes = await this.getExistingHashes();
-      if (existingHashes.includes(infoHash.toLowerCase())) {
-        this.logger.debug("Torrent already exists in qBittorrent", { infoHash });
-        return {
-          success: false,
-          duplicate: true,
-          message: "Torrent already exists in qBittorrent",
-        };
-      }
-    }
+		if (infoHash) {
+			const existingHashes = await this.getExistingHashes();
+			if (existingHashes.includes(infoHash.toLowerCase())) {
+				this.logger.debug("Torrent already exists in qBittorrent", { infoHash });
+				return {
+					success: false,
+					duplicate: true,
+					message: "Torrent already exists in qBittorrent",
+				};
+			}
+		}
 
-    const torrentResponse = await fetch(torrentUrl);
+		const torrentResponse = await fetch(torrentUrl);
 
-    if (!torrentResponse.ok) {
-      throw new Error(`Failed to download torrent file (${torrentResponse.status})`);
-    }
+		if (!torrentResponse.ok) {
+			throw new Error(`Failed to download torrent file (${torrentResponse.status})`);
+		}
 
-    const torrentBuffer = new Uint8Array(await torrentResponse.arrayBuffer());
+		const torrentBuffer = new Uint8Array(await torrentResponse.arrayBuffer());
 
-    const endpoint = `${apiBaseUrl.replace(/\/$/, "")}/api/v2/torrents/add`;
-    const formData = new FormData();
-    formData.append("torrents", new Blob([torrentBuffer]), "download.torrent");
-    formData.append("firstLastPiecePrio", "true");
+		const endpoint = `${apiBaseUrl.replace(/\/$/, "")}/api/v2/torrents/add`;
+		const formData = new FormData();
+		formData.append("torrents", new Blob([torrentBuffer]), "download.torrent");
+		formData.append("firstLastPiecePrio", "true");
 
-    const addResponse = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      body: formData,
-    });
+		const addResponse = await fetch(endpoint, {
+			method: "POST",
+			headers: {
+				Authorization: `Bearer ${token}`,
+			},
+			body: formData,
+		});
 
-    this.logger.debug("Torrent added to qBittorrent", { addResponse });
+		this.logger.debug("Torrent added to qBittorrent", { addResponse });
 
-    if (!addResponse.ok) {
-      const body = await addResponse.text();
-      throw new Error(`Failed to add torrent (${addResponse.status}): ${body.slice(0, 250)}`);
-    }
+		if (!addResponse.ok) {
+			const body = await addResponse.text();
+			throw new Error(`Failed to add torrent (${addResponse.status}): ${body.slice(0, 250)}`);
+		}
 
-    return { success: true };
-  }
+		return { success: true };
+	}
 }

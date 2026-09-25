@@ -3,35 +3,35 @@ import { SelectPathsOptions } from "@shared/types/dialog.types";
 
 @injectable()
 export class DialogService {
-  /**
-   * @param returnFiles flag to make the function return files in the folder
-   */
-  public async selectFolder<WithFiles extends boolean>(returnFiles: WithFiles) {
-    const result = await window.preload.ipc.send.dialog.selectDirectory<WithFiles>(returnFiles);
+	/**
+	 * @param returnFiles flag to make the function return files in the folder
+	 */
+	public async selectFolder<WithFiles extends boolean>(returnFiles: WithFiles) {
+		const result = await window.preload.ipc.send.dialog.selectDirectory<WithFiles>(returnFiles);
 
-    if (!result) return null;
+		if (!result) return null;
 
-    return result;
-  }
+		return result;
+	}
 
-  public async selectFiles() {
-    const result = await window.preload.ipc.send.dialog.selectPaths({
-      allowFiles: true,
-      allowDirectories: false,
-      multiSelections: true,
-    });
+	public async selectFiles() {
+		const result = await window.preload.ipc.send.dialog.selectPaths({
+			allowFiles: true,
+			allowDirectories: false,
+			multiSelections: true,
+		});
 
-    if (!result) return [];
+		if (!result) return [];
 
-    return result.map((path) => ({
-      path,
-      name: path.split(/[\\/]/).at(-1) ?? path,
-      size: 0,
-      type: "file" as const,
-    }));
-  }
+		return result.map((path) => ({
+			path,
+			name: path.split(/[\\/]/).at(-1) ?? path,
+			size: 0,
+			type: "file" as const,
+		}));
+	}
 
-  public async selectPaths(options?: SelectPathsOptions) {
-    return (await window.preload.ipc.send.dialog.selectPaths(options)) ?? [];
-  }
+	public async selectPaths(options?: SelectPathsOptions) {
+		return (await window.preload.ipc.send.dialog.selectPaths(options)) ?? [];
+	}
 }

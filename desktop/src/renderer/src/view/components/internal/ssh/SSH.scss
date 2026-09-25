@@ -1,66 +1,65 @@
 .SSH {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  height: 100%;
-  background:
-    radial-gradient(circle at top left, rgba(79, 210, 255, 0.12), transparent 28%),
-    radial-gradient(circle at bottom right, rgba(0, 255, 136, 0.08), transparent 24%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 20%), var(--surface-0);
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	height: 100%;
+	background:
+		radial-gradient(circle at top left, rgba(79, 210, 255, 0.12), transparent 28%), radial-gradient(circle at bottom right, rgba(0, 255, 136, 0.08), transparent 24%),
+		linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 20%), var(--surface-0);
 }
 
 .SSH__drawer-paper {
-  width: 380px !important;
-  background: rgba(8, 8, 8, 0.98) !important;
-  border-right: 1px solid rgba(79, 210, 255, 0.12) !important;
-  backdrop-filter: blur(20px);
+	width: 380px !important;
+	background: rgba(8, 8, 8, 0.98) !important;
+	border-right: 1px solid rgba(79, 210, 255, 0.12) !important;
+	backdrop-filter: blur(20px);
 }
 
 .SSH__sidebar {
-  display: flex;
-  flex-direction: column;
-  padding: 20px;
-  overflow: hidden;
-  min-height: 0;
-  height: 100%;
+	display: flex;
+	flex-direction: column;
+	padding: 20px;
+	overflow: hidden;
+	min-height: 0;
+	height: 100%;
 }
 
 .SSH__drawer-toggle {
-  color: rgba(255, 255, 255, 0.55) !important;
-  transition: color 0.15s ease !important;
+	color: rgba(255, 255, 255, 0.55) !important;
+	transition: color 0.15s ease !important;
 
-  &:hover {
-    color: rgba(79, 210, 255, 0.85) !important;
-  }
+	&:hover {
+		color: rgba(79, 210, 255, 0.85) !important;
+	}
 }
 
 .SSH__workspace {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) 340px;
-  min-width: 0;
-  min-height: 0;
-  overflow: hidden;
+	display: grid;
+	grid-template-rows: auto minmax(0, 1fr) 340px;
+	min-width: 0;
+	min-height: 0;
+	overflow: hidden;
 }
 
 .SSH__toolbar,
 .SSH__console-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 18px 20px 14px;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 18px 20px 14px;
 }
 
 .SSH__eyebrow {
-  font-size: 0.68rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: rgba(79, 210, 255, 0.75);
-  font-weight: 600;
+	font-size: 0.68rem;
+	letter-spacing: 0.14em;
+	text-transform: uppercase;
+	color: rgba(79, 210, 255, 0.75);
+	font-weight: 600;
 }
 
 .SSH__headline {
-  font-size: 1rem;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.92);
+	font-size: 1rem;
+	font-weight: 600;
+	color: rgba(255, 255, 255, 0.92);
 }
 
 .SSH__toolbar-meta,
@@ -72,15 +71,15 @@
 .SSH__run-target-status,
 .SSH__transfer-empty,
 .SSH__terminal-empty {
-  font-size: 0.74rem;
-  color: var(--text-muted);
+	font-size: 0.74rem;
+	color: var(--text-muted);
 }
 
 .SSH__directory {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-  padding-bottom: 32px;
+	flex: 1;
+	min-height: 0;
+	overflow: auto;
+	padding-bottom: 32px;
 }
 
 .SSH__machine,
@@ -88,335 +87,335 @@
 .SSH__run-target,
 .SSH__transfer,
 .SSH__terminal {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0.01));
-  border: 1px solid var(--border-subtle);
-  border-radius: 14px;
+	background: linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0.01));
+	border: 1px solid var(--border-subtle);
+	border-radius: 14px;
 }
 
 .SSH__machine {
-  padding: 6px 8px 6px 6px;
-  cursor: grab;
-  transition:
-    border-color 0.15s ease,
-    background 0.15s ease;
+	padding: 6px 8px 6px 6px;
+	cursor: grab;
+	transition:
+		border-color 0.15s ease,
+		background 0.15s ease;
 }
 
 .SSH__machine:hover {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
+	background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
 }
 
 .SSH__machine:hover .SSH__machine-actions .MuiIconButton-root:not(.SSH__machine-action-open) {
-  opacity: 1;
+	opacity: 1;
 }
 
 .SSH__machine-actions .MuiIconButton-root:not(.SSH__machine-action-open) {
-  opacity: 0;
-  transition: opacity 0.15s ease;
+	opacity: 0;
+	transition: opacity 0.15s ease;
 }
 
 .SSH__machine--dragging {
-  opacity: 0.45;
-  cursor: grabbing;
+	opacity: 0.45;
+	cursor: grabbing;
 }
 
 .SSH__machine--connected,
 .SSH__panel--active {
-  border-color: rgba(79, 210, 255, 0.4);
-  box-shadow: inset 0 0 0 1px rgba(79, 210, 255, 0.16);
+	border-color: rgba(79, 210, 255, 0.4);
+	box-shadow: inset 0 0 0 1px rgba(79, 210, 255, 0.16);
 }
 
 .SSH__panel--sudo {
-  border-color: rgba(255, 167, 38, 0.45);
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 167, 38, 0.18),
-    0 0 12px rgba(255, 167, 38, 0.06);
+	border-color: rgba(255, 167, 38, 0.45);
+	box-shadow:
+		inset 0 0 0 1px rgba(255, 167, 38, 0.18),
+		0 0 12px rgba(255, 167, 38, 0.06);
 
-  &.SSH__panel--active {
-    border-color: rgba(255, 167, 38, 0.65);
-    box-shadow:
-      inset 0 0 0 1px rgba(255, 167, 38, 0.28),
-      0 0 16px rgba(255, 167, 38, 0.1);
-  }
+	&.SSH__panel--active {
+		border-color: rgba(255, 167, 38, 0.65);
+		box-shadow:
+			inset 0 0 0 1px rgba(255, 167, 38, 0.28),
+			0 0 16px rgba(255, 167, 38, 0.1);
+	}
 }
 
 .SSH__sudo-badge {
-  display: inline-flex;
-  align-items: center;
-  font-size: 0.57rem;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: rgba(255, 167, 38, 0.95);
-  background: rgba(255, 167, 38, 0.12);
-  border: 1px solid rgba(255, 167, 38, 0.3);
-  border-radius: 4px;
-  padding: 1px 5px 1px 4px;
-  line-height: 1.6;
-  flex-shrink: 0;
+	display: inline-flex;
+	align-items: center;
+	font-size: 0.57rem;
+	font-weight: 800;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+	color: rgba(255, 167, 38, 0.95);
+	background: rgba(255, 167, 38, 0.12);
+	border: 1px solid rgba(255, 167, 38, 0.3);
+	border-radius: 4px;
+	padding: 1px 5px 1px 4px;
+	line-height: 1.6;
+	flex-shrink: 0;
 }
 
 .SSH__btn-sudo {
-  color: rgba(255, 255, 255, 0.35) !important;
-  transition: color 0.15s ease !important;
+	color: rgba(255, 255, 255, 0.35) !important;
+	transition: color 0.15s ease !important;
 
-  &:hover {
-    color: rgba(255, 167, 38, 0.7) !important;
-  }
+	&:hover {
+		color: rgba(255, 167, 38, 0.7) !important;
+	}
 }
 
 .SSH__btn-sudo--active {
-  color: rgba(255, 167, 38, 0.9) !important;
-  filter: drop-shadow(0 0 4px rgba(255, 167, 38, 0.5));
-  transition: color 0.15s ease !important;
+	color: rgba(255, 167, 38, 0.9) !important;
+	filter: drop-shadow(0 0 4px rgba(255, 167, 38, 0.5));
+	transition: color 0.15s ease !important;
 }
 
 .SSH__btn-hidden {
-  color: rgba(255, 255, 255, 0.35) !important;
-  transition: color 0.15s ease !important;
+	color: rgba(255, 255, 255, 0.35) !important;
+	transition: color 0.15s ease !important;
 
-  &:hover {
-    color: rgba(255, 255, 255, 0.6) !important;
-  }
+	&:hover {
+		color: rgba(255, 255, 255, 0.6) !important;
+	}
 }
 
 .SSH__btn-hidden--active {
-  color: rgba(79, 210, 255, 0.85) !important;
-  transition: color 0.15s ease !important;
+	color: rgba(79, 210, 255, 0.85) !important;
+	transition: color 0.15s ease !important;
 }
 
 .SSH__toolbar-divider {
-  width: 1px;
-  height: 14px;
-  background: rgba(255, 255, 255, 0.1);
-  flex-shrink: 0;
-  margin: 0 1px;
+	width: 1px;
+	height: 14px;
+	background: rgba(255, 255, 255, 0.1);
+	flex-shrink: 0;
+	margin: 0 1px;
 }
 
 .SSH__machine--error {
-  border-color: rgba(255, 102, 102, 0.28);
+	border-color: rgba(255, 102, 102, 0.28);
 }
 
 .SSH__machine-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	flex-shrink: 0;
 }
 
 .SSH__machine-dot--connected {
-  background: #86ffbf;
-  box-shadow: 0 0 5px rgba(0, 255, 136, 0.7);
+	background: #86ffbf;
+	box-shadow: 0 0 5px rgba(0, 255, 136, 0.7);
 }
 
 .SSH__machine-dot--connecting {
-  background: #90dcff;
-  animation: SSH-dot-pulse 1.2s ease-in-out infinite;
+	background: #90dcff;
+	animation: SSH-dot-pulse 1.2s ease-in-out infinite;
 }
 
 .SSH__machine-dot--error {
-  background: #ff9c9c;
-  box-shadow: 0 0 5px rgba(255, 102, 102, 0.6);
+	background: #ff9c9c;
+	box-shadow: 0 0 5px rgba(255, 102, 102, 0.6);
 }
 
 .SSH__machine-dot--disconnected {
-  background: rgba(255, 255, 255, 0.22);
+	background: rgba(255, 255, 255, 0.22);
 }
 
 @keyframes SSH-dot-pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.35;
-  }
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.35;
+	}
 }
 
 .SSH__machine-title,
 .SSH__panel-title,
 .SSH__run-target-name,
 .SSH__transfer-title {
-  font-size: 0.84rem;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.95);
+	font-size: 0.84rem;
+	font-weight: 600;
+	color: rgba(255, 255, 255, 0.95);
 }
 
 .SSH__panels {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(300px, 1fr);
-  grid-template-rows: 1fr;
-  gap: 14px;
-  padding: 0 20px 18px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  min-height: 0;
+	display: grid;
+	grid-auto-flow: column;
+	grid-auto-columns: minmax(300px, 1fr);
+	grid-template-rows: 1fr;
+	gap: 14px;
+	padding: 0 20px 18px;
+	overflow-x: auto;
+	overflow-y: hidden;
+	min-height: 0;
 }
 
 .SSH__panel {
-  display: flex;
-  flex-direction: column;
-  padding: 12px;
-  min-width: 0;
-  min-height: 0;
-  overflow: hidden;
+	display: flex;
+	flex-direction: column;
+	padding: 12px;
+	min-width: 0;
+	min-height: 0;
+	overflow: hidden;
 }
 
 .SSH__folder,
 .SSH__directory-root {
-  padding: 12px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.015));
-  border: 1px solid var(--border-subtle);
-  border-radius: 14px;
+	padding: 12px;
+	background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.015));
+	border: 1px solid var(--border-subtle);
+	border-radius: 14px;
 }
 
 .SSH__folder--dropping,
 .SSH__directory-root--dropping {
-  border-color: rgba(79, 210, 255, 0.48);
-  box-shadow: inset 0 0 0 1px rgba(79, 210, 255, 0.18);
-  background: rgba(79, 210, 255, 0.06);
+	border-color: rgba(79, 210, 255, 0.48);
+	box-shadow: inset 0 0 0 1px rgba(79, 210, 255, 0.18);
+	background: rgba(79, 210, 255, 0.06);
 }
 
 .SSH__folder-machines {
-  margin-top: 10px;
+	margin-top: 10px;
 }
 
 .SSH__folder-title {
-  font-size: 0.86rem;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.95);
+	font-size: 0.86rem;
+	font-weight: 600;
+	color: rgba(255, 255, 255, 0.95);
 }
 
 .SSH__folder-meta {
-  font-size: 0.72rem;
-  color: var(--text-muted);
+	font-size: 0.72rem;
+	color: var(--text-muted);
 }
 
 .SSH__folder-empty {
-  font-size: 0.74rem;
-  color: var(--text-muted);
-  font-style: italic;
+	font-size: 0.74rem;
+	color: var(--text-muted);
+	font-style: italic;
 }
 
 .SSH__panel-path-input {
-  .MuiInputBase-input {
-    padding: 0;
-    font-size: 0.74rem;
-    color: var(--text-muted);
-    font-family: var(--font-mono);
-    border-bottom: 1px solid rgba(79, 210, 255, 0.4);
-  }
+	.MuiInputBase-input {
+		padding: 0;
+		font-size: 0.74rem;
+		color: var(--text-muted);
+		font-family: var(--font-mono);
+		border-bottom: 1px solid rgba(79, 210, 255, 0.4);
+	}
 }
 
 .SSH__entry-list {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  margin-top: 10px;
+	flex: 1;
+	min-height: 0;
+	overflow-y: auto;
+	margin-top: 10px;
 }
 
 .SSH__entry {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 8px 10px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid transparent;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	padding: 8px 10px;
+	border-radius: 10px;
+	background: rgba(255, 255, 255, 0.02);
+	border: 1px solid transparent;
 }
 
 .SSH__entry:hover {
-  border-color: rgba(79, 210, 255, 0.18);
-  background: rgba(79, 210, 255, 0.04);
+	border-color: rgba(79, 210, 255, 0.18);
+	background: rgba(79, 210, 255, 0.04);
 }
 
 .SSH__entry-main {
-  min-width: 0;
-  cursor: pointer;
+	min-width: 0;
+	cursor: pointer;
 }
 
 .SSH__entry-name,
 .SSH__terminal pre {
-  font-family: var(--font-mono);
+	font-family: var(--font-mono);
 }
 
 .SSH__entry-name {
-  font-size: 0.78rem;
-  color: rgba(255, 255, 255, 0.9);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+	font-size: 0.78rem;
+	color: rgba(255, 255, 255, 0.9);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .SSH__console {
-  border-top: 1px solid var(--border-subtle);
-  padding: 0 20px 18px;
-  overflow: auto;
+	border-top: 1px solid var(--border-subtle);
+	padding: 0 20px 18px;
+	overflow: auto;
 }
 
 .SSH__command-bar {
-  padding: 0 0 12px;
+	padding: 0 0 12px;
 }
 
 .SSH__run-targets {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }
 
 .SSH__run-target,
 .SSH__transfer {
-  padding: 10px 12px;
+	padding: 10px 12px;
 }
 
 .SSH__terminal {
-  padding: 12px;
-  margin-top: 12px;
+	padding: 12px;
+	margin-top: 12px;
 }
 
 .SSH__terminal-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.8rem;
-  font-weight: 600;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 0.8rem;
+	font-weight: 600;
 }
 
 .SSH__terminal-log {
-  max-height: 160px;
-  overflow: auto;
+	max-height: 160px;
+	overflow: auto;
 }
 
 .SSH__terminal-line {
-  display: grid;
-  grid-template-columns: 120px minmax(0, 1fr);
-  gap: 10px;
-  font-size: 0.75rem;
-  align-items: start;
+	display: grid;
+	grid-template-columns: 120px minmax(0, 1fr);
+	gap: 10px;
+	font-size: 0.75rem;
+	align-items: start;
 }
 
 .SSH__terminal-line span {
-  color: rgba(79, 210, 255, 0.9);
-  font-family: var(--font-mono);
+	color: rgba(79, 210, 255, 0.9);
+	font-family: var(--font-mono);
 }
 
 .SSH__terminal-line pre {
-  margin: 0;
-  white-space: pre-wrap;
-  word-break: break-word;
-  color: rgba(255, 255, 255, 0.88);
+	margin: 0;
+	white-space: pre-wrap;
+	word-break: break-word;
+	color: rgba(255, 255, 255, 0.88);
 }
 
 .SSH__terminal-line--stderr pre {
-  color: #ffb4b4;
+	color: #ffb4b4;
 }
 
 .SSH__empty {
-  display: grid;
-  place-items: center;
-  padding: 30px;
-  border: 1px dashed var(--border-medium);
-  border-radius: 14px;
-  color: var(--text-muted);
-  text-align: center;
+	display: grid;
+	place-items: center;
+	padding: 30px;
+	border: 1px dashed var(--border-medium);
+	border-radius: 14px;
+	color: var(--text-muted);
+	text-align: center;
 }

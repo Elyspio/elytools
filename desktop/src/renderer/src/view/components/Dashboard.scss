@@ -1,81 +1,81 @@
 .Dashboard {
-  width: 100%;
-  height: 100%;
-  padding: 24px;
+	width: 100%;
+	height: 100%;
+	padding: 24px;
 }
 
 .Dashboard__header {
-  text-align: center;
-  margin-bottom: 20px;
+	text-align: center;
+	margin-bottom: 20px;
 }
 
 .Dashboard__title {
-  font-weight: 600;
-  font-size: 1.1rem;
-  color: rgba(255, 255, 255, 0.7);
-  letter-spacing: -0.01em;
+	font-weight: 600;
+	font-size: 1.1rem;
+	color: rgba(255, 255, 255, 0.7);
+	letter-spacing: -0.01em;
 }
 
 .Dashboard__divider {
-  width: 40px;
-  height: 1px;
-  background-color: rgba(255, 255, 255, 0.1);
-  margin: 8px auto;
+	width: 40px;
+	height: 1px;
+	background-color: rgba(255, 255, 255, 0.1);
+	margin: 8px auto;
 }
 
 .Dashboard__label {
-  font-size: 0.6rem;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--text-faint);
+	font-size: 0.6rem;
+	font-weight: 600;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+	color: var(--text-faint);
 }
 
 .Dashboard__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 12px;
-  width: 100%;
-  max-width: 520px;
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+	gap: 12px;
+	width: 100%;
+	max-width: 520px;
 }
 
 .Dashboard__card {
-  background-color: var(--surface-1);
-  border: 1px solid var(--border-subtle);
-  border-radius: 10px;
-  padding: 20px;
-  cursor: pointer;
-  transition:
-    border-color 150ms ease,
-    background-color 150ms ease;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  user-select: none;
+	background-color: var(--surface-1);
+	border: 1px solid var(--border-subtle);
+	border-radius: 10px;
+	padding: 20px;
+	cursor: pointer;
+	transition:
+		border-color 150ms ease,
+		background-color 150ms ease;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	user-select: none;
 }
 
 .Dashboard__card-icon {
-  opacity: 0.6;
-  margin-bottom: 2px;
+	opacity: 0.6;
+	margin-bottom: 2px;
 }
 
 .Dashboard__card-title {
-  font-weight: 600;
-  font-size: 0.875rem;
-  color: rgba(255, 255, 255, 0.9);
+	font-weight: 600;
+	font-size: 0.875rem;
+	color: rgba(255, 255, 255, 0.9);
 }
 
 .Dashboard__card-desc {
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  line-height: 1.4;
+	font-size: 0.75rem;
+	color: var(--text-muted);
+	line-height: 1.4;
 }
 
 .Dashboard__card-tag {
-  font-size: 0.6rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  opacity: 0.5;
-  margin-top: 4px;
+	font-size: 0.6rem;
+	font-weight: 600;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	opacity: 0.5;
+	margin-top: 4px;
 }
