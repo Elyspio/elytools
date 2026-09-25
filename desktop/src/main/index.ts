@@ -9,6 +9,8 @@ import { UpdateModule } from "@main/modules/update.module";
 import { RequestInterceptionModule } from "@main/modules/request/interception.request.module";
 import { DeeplinkModule } from "@main/modules/deeplink.module";
 import { MainContextModule } from "@main/modules/context/main.context.module";
+import { TrayIconModule } from "@main/modules/trayicon.module";
+import { LlmUsageModule } from "@main/modules/llm-usage/llm-usage.module";
 
 const hasSingleInstanceLock = app.requestSingleInstanceLock();
 
@@ -49,6 +51,8 @@ if (hasSingleInstanceLock) {
 		mainContainer.get(DeeplinkModule).register();
 
 		const mainWindow = await windowModule.createMainWindow();
+		mainContainer.get(TrayIconModule).createTrayIcon(mainWindow);
+		mainContainer.get(LlmUsageModule).start();
 
 		mainWindow.on("show", () => {
 			void mainContainer.get(UpdateModule).checkForUpdates();

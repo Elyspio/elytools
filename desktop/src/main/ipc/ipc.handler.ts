@@ -1,7 +1,7 @@
 import { GetInformationKey, GetInformationResult, IpcHandledEvents } from "@shared/ipc/ipc.handled.events";
 import * as Electron from "electron";
 import { app, BrowserWindow, ipcMain, IpcMainInvokeEvent } from "electron";
-import { WindowModule } from "../modules/window/window.module";
+import { HIDDEN_ARG, WindowModule } from "../modules/window/window.module";
 import { ConfigModule } from "../modules/config/config.module";
 import si from "systeminformation";
 import { UpdateModule } from "../modules/update.module";
@@ -19,6 +19,7 @@ import { NyaaModule } from "@main/modules/torrent/nyaa.module";
 import { QBittorrentModule } from "@main/modules/torrent/qbittorrent.module";
 import { OidcModule } from "@main/modules/auth/oidc.module";
 import { SshModule } from "@main/modules/ssh/ssh.module";
+import { LlmUsageModule } from "@main/modules/llm-usage/llm-usage.module";
 
 const ipcHandlers: IpcHandledEvents = {
 	"system:meta:get"(): Promise<{
@@ -90,6 +91,8 @@ const ipcHandlers: IpcHandledEvents = {
 		app.setLoginItemSettings({
 			openAtLogin: value,
 			enabled: value,
+			// Started with the session: straight to the tray, the LLM usage upload runs in the background.
+			args: [HIDDEN_ARG],
 		});
 		await mainContainer.get(ConfigModule).writeConfig({
 			...conf,
@@ -233,6 +236,12 @@ const ipcHandlers: IpcHandledEvents = {
 	},
 	async "auth:oidc:status:get"() {
 		return await mainContainer.get(OidcModule).getStatus();
+	},
+	async "llm-usage:status:get"() {
+		return await mainContainer.get(LlmUsageModule).getStatus();
+	},
+	async "llm-usage:sync"() {
+		return await mainContainer.get(LlmUsageModule).sync();
 	},
 	async "ssh:machines:list"() {
 		return await mainContainer.get(SshModule).listMachines();

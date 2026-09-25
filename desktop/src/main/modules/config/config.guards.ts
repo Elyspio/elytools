@@ -1,4 +1,4 @@
-import { LocalConfig, LocalConfigV1, LocalConfigV2, LocalConfigV3, LocalConfigV4 } from "@shared/config/app.config";
+import { LocalConfig, LocalConfigV1, LocalConfigV2, LocalConfigV3, LocalConfigV4, LocalConfigV5 } from "@shared/config/app.config";
 
 export const configGuards = {
 	is: {
@@ -13,6 +13,9 @@ export const configGuards = {
 		},
 		v4: (conf: LocalConfig): conf is LocalConfigV4 => {
 			return conf.version === 4;
+		},
+		v5: (conf: LocalConfig): conf is LocalConfigV5 => {
+			return conf.version === 5;
 		},
 	},
 };

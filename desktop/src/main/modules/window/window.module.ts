@@ -8,8 +8,13 @@ import { WindowPositionModule } from "./window.position.module";
 import { mainConfig } from "@shared/config/main.config";
 import { inject, injectable } from "inversify";
 
+/** Command line switch of a start with the session: the window stays in the tray. */
+export const HIDDEN_ARG = "--hidden";
+
 @injectable()
 export class WindowModule extends LogModule {
+	private quitting = false;
+
 	public constructor(
 		@inject(WindowPositionModule) private readonly windowPositionModule: WindowPositionModule,
 		@inject(MainContextModule) private readonly mainContextModule: MainContextModule
@@ -56,13 +61,23 @@ export class WindowModule extends LogModule {
 		});
 
 		await this.loadMainWindow(mainWindow);
-		// this.trayIconModule.createTrayIcon(mainWindow);
 
-		mainWindow.on("close", () => {
-			void this.windowPositionModule.setByWindow(mainWindow);
+		app.on("before-quit", () => {
+			this.quitting = true;
 		});
 
-		mainWindow.show();
+		mainWindow.on("close", (event) => {
+			void this.windowPositionModule.setByWindow(mainWindow);
+			// Closing sends the window to the tray: the background jobs (LLM usage upload) keep running. The tray menu quits.
+			if (!this.quitting) {
+				event.preventDefault();
+				mainWindow.hide();
+			}
+		});
+
+		if (!process.argv.includes(HIDDEN_ARG)) {
+			mainWindow.show();
+		}
 
 		return mainWindow;
 	}

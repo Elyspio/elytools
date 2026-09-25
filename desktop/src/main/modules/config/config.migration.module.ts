@@ -1,7 +1,19 @@
+import os from "node:os";
 import { configGuards } from "./config.guards";
 import { LogModule } from "../log.module";
-import type { LatestConfig, LocalConfig, LocalConfigV1, LocalConfigV2, LocalConfigV3 } from "@shared/config/app.config";
+import type { LatestConfig, LlmUsageConfiguration, LocalConfig, LocalConfigV1, LocalConfigV2, LocalConfigV3, LocalConfigV4 } from "@shared/config/app.config";
 import { log } from "../../utils/logs.utils";
+
+/**
+ * Upload enabled towards the production monitor, under the host name of the workstation.
+ */
+export function defaultLlmUsageConfiguration(): LlmUsageConfiguration {
+	return {
+		enabled: true,
+		apiBaseUrl: "https://monitor.llm.elyspio.fr",
+		machineName: os.hostname(),
+	};
+}
 
 /**
  * Module de migration de la configuration local
@@ -18,6 +30,27 @@ export class ConfigMigrationModule extends LogModule {
 	@log.debug()
 	public async migrate(conf: LocalConfig): Promise<LatestConfig> {
 		this.logger.info("Starting migration of local config");
+		if (configGuards.is.v5(conf)) {
+			return conf;
+		}
+
+		return {
+			...this.toV4(conf),
+			version: 5,
+			llmUsage: defaultLlmUsageConfiguration(),
+		};
+	}
+
+	/**
+	 * Indique si la configuration locale nécessite une migration
+	 * @param conf
+	 */
+	@log.debug((conf: LocalConfig) => `version=${conf.version}`)
+	public requireMigration(conf: LocalConfig): conf is LocalConfigV1 | LocalConfigV2 | LocalConfigV3 | LocalConfigV4 {
+		return !configGuards.is.v5(conf);
+	}
+
+	private toV4(conf: LocalConfigV1 | LocalConfigV2 | LocalConfigV3 | LocalConfigV4): LocalConfigV4 {
 		if (configGuards.is.v4(conf)) {
 			return conf;
 		}
@@ -71,14 +104,5 @@ export class ConfigMigrationModule extends LogModule {
 				folders: [],
 			},
 		};
-	}
-
-	/**
-	 * Indique si la configuration locale nécessite une migration
-	 * @param conf
-	 */
-	@log.debug((conf: LocalConfig) => `version=${conf.version}`)
-	public requireMigration(conf: LocalConfig): conf is LocalConfigV1 | LocalConfigV2 | LocalConfigV3 {
-		return !configGuards.is.v4(conf);
 	}
 }

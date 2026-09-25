@@ -9,6 +9,7 @@ import { Encoder, FfmpegConvertOptions } from "@shared/types/ffmpeg.types";
 import type { FfprobeResult } from "@shared/types/ffprobe.types";
 import type { NyaaTorrentItem, TorrentAddResult } from "@shared/types/torrent.types";
 import type { OidcAuthStatus } from "@shared/types/auth.types";
+import type { LlmUsageStatus } from "@shared/types/llm-usage.types";
 import type { SshCommandRequest, SshCommandRun, SshDirectoryListing, SshMachine, SshMachineInput, SshTransfer } from "@shared/types/ssh.types";
 
 export type Dimensions = {
@@ -132,6 +133,11 @@ export interface IpcHandledEvents {
 	"auth:oidc:login:cancel": (event: IpcMainInvokeEvent) => void;
 	"auth:oidc:logout": (event: IpcMainInvokeEvent) => Promise<void>;
 	"auth:oidc:status:get": (event: IpcMainInvokeEvent) => Promise<OidcAuthStatus>;
+	"llm-usage:status:get": (event: IpcMainInvokeEvent) => Promise<LlmUsageStatus>;
+	/**
+	 * Lit les nouveaux journaux Claude Code / Codex et envoie l'usage à LLM Usage Monitor
+	 */
+	"llm-usage:sync": (event: IpcMainInvokeEvent) => Promise<LlmUsageStatus>;
 	"ssh:machines:list": (event: IpcMainInvokeEvent) => Promise<SshMachine[]>;
 	"ssh:folders:list": (event: IpcMainInvokeEvent) => Promise<import("@shared/types/ssh.types").SshFolder[]>;
 	"ssh:machine:save": (event: IpcMainInvokeEvent, machine: SshMachineInput) => Promise<SshMachine>;

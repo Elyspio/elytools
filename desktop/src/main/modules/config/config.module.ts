@@ -3,7 +3,7 @@ import path from "path";
 import * as fs from "node:fs";
 import type { LatestConfig, LocalConfig } from "@shared/config/app.config";
 import { MainContextModule } from "../context/main.context.module";
-import { ConfigMigrationModule } from "./config.migration.module";
+import { ConfigMigrationModule, defaultLlmUsageConfiguration } from "./config.migration.module";
 import { log } from "../../utils/logs.utils";
 import { inject, injectable } from "inversify";
 
@@ -83,7 +83,7 @@ export class ConfigModule extends LogModule {
 	@log.debug()
 	private async getDefaultConfig(): Promise<LatestConfig> {
 		return {
-			version: 4,
+			version: 5,
 			windows: { position: {} },
 			appboard: { show: [] },
 			frame: {
@@ -116,6 +116,7 @@ export class ConfigModule extends LogModule {
 				machines: [],
 				folders: [],
 			},
+			llmUsage: defaultLlmUsageConfiguration(),
 		};
 	}
 }

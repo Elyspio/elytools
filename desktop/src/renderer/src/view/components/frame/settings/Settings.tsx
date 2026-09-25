@@ -9,12 +9,15 @@ import LanguageIcon from "@mui/icons-material/Language";
 import CloudDownloadIcon from "@mui/icons-material/CloudDownload";
 import TuneIcon from "@mui/icons-material/Tune";
 import DashboardIcon from "@mui/icons-material/Dashboard";
+import InsightsIcon from "@mui/icons-material/Insights";
+import type { LlmUsageStatus } from "@shared/types/llm-usage.types";
 
-type Section = "endpoints" | "torrent" | "display" | "appboard";
+type Section = "endpoints" | "torrent" | "llmUsage" | "display" | "appboard";
 
 const sections: { key: Section; label: string; icon: React.ReactNode }[] = [
 	{ key: "endpoints", label: "Endpoints", icon: <LanguageIcon sx={{ fontSize: 16 }} /> },
 	{ key: "torrent", label: "Torrent & Auth", icon: <CloudDownloadIcon sx={{ fontSize: 16 }} /> },
+	{ key: "llmUsage", label: "LLM usage", icon: <InsightsIcon sx={{ fontSize: 16 }} /> },
 	{ key: "display", label: "Display", icon: <TuneIcon sx={{ fontSize: 16 }} /> },
 	{ key: "appboard", label: "Appboard", icon: <DashboardIcon sx={{ fontSize: 16 }} /> },
 ];
@@ -35,6 +38,8 @@ export const Settings: React.FC<OwnProps> = ({ close, isOpen }) => {
 	});
 	const [isAuthenticating, setIsAuthenticating] = useState(false);
 	const [activeSection, setActiveSection] = useState<Section>("endpoints");
+	const [llmUsageStatus, setLlmUsageStatus] = useState<LlmUsageStatus | null>(null);
+	const [isSyncing, setIsSyncing] = useState(false);
 
 	const appboardOptions = useMemo(() => [AppBoardShow.external, AppBoardShow.internal, AppBoardShow.hidden], []);
 
@@ -45,6 +50,7 @@ export const Settings: React.FC<OwnProps> = ({ close, isOpen }) => {
 	useEffect(() => {
 		if (!isOpen) return;
 		void window.preload.ipc.send.auth.oidc.status().then(setAuthStatus);
+		void window.preload.ipc.send.llmUsage.status().then(setLlmUsageStatus);
 	}, [isOpen]);
 
 	// Sync the draft from the store while the dialog is open (adjusting state during render instead of in an effect)
@@ -140,6 +146,28 @@ export const Settings: React.FC<OwnProps> = ({ close, isOpen }) => {
 		},
 		[updateDraft]
 	);
+
+	const setLlmUsageField = useCallback(
+		<K extends keyof LatestConfig["llmUsage"]>(field: K, value: LatestConfig["llmUsage"][K]) => {
+			updateDraft((draft) => ({ ...draft, llmUsage: { ...draft.llmUsage, [field]: value } }));
+		},
+		[updateDraft]
+	);
+
+	const syncLlmUsage = useCallback(async () => {
+		setIsSyncing(true);
+		try {
+			await saveConfig();
+			const status = await window.preload.ipc.send.llmUsage.sync();
+			setLlmUsageStatus(status);
+			if (status.lastError) toast.error(status.lastError);
+			else toast.success("LLM usage uploaded");
+		} catch (error) {
+			toast.error((error as Error).message);
+		} finally {
+			setIsSyncing(false);
+		}
+	}, [saveConfig]);
 
 	const toggleAppboard = useCallback(
 		(value: AppBoardShow, checked: boolean) => {
@@ -311,6 +339,61 @@ export const Settings: React.FC<OwnProps> = ({ close, isOpen }) => {
 										</Typography>
 									</Stack>
 								</Box>
+							</Stack>
+						)}
+
+						{activeSection === "llmUsage" && (
+							<Stack spacing={2}>
+								<Typography className={"Settings__section-title"}>LLM Usage Monitor</Typography>
+								<Box className={"Settings__field-group"}>
+									<FormControlLabel
+										control={<Switch checked={draftConfig.llmUsage.enabled} onChange={(e) => setLlmUsageField("enabled", e.target.checked)} />}
+										label="Upload the Claude Code and Codex usage of this workstation"
+									/>
+									<TextField
+										label="LLM Usage Monitor URL"
+										value={draftConfig.llmUsage.apiBaseUrl}
+										onChange={(e) => setLlmUsageField("apiBaseUrl", e.target.value)}
+										size="small"
+										fullWidth
+									/>
+									<TextField
+										label="Workstation name"
+										value={draftConfig.llmUsage.machineName}
+										onChange={(e) => setLlmUsageField("machineName", e.target.value)}
+										size="small"
+										fullWidth
+										helperText="Shown in the workstation filter of the Usage page; renaming keeps the history."
+									/>
+									<Typography variant="caption" sx={{ color: "var(--text-muted)" }}>
+										Uses the OIDC sign-in of « Torrent & Auth »: the account needs the llm-usage-monitor:admin role. Uploads every 5 minutes, window closed
+										included.
+									</Typography>
+								</Box>
+
+								{llmUsageStatus && (
+									<Box className={"Settings__field-group"}>
+										<Typography variant="caption" sx={{ color: "var(--text-muted)" }}>
+											Last upload: {llmUsageStatus.lastSuccessAt ? new Date(llmUsageStatus.lastSuccessAt).toLocaleString() : "never"} ·{" "}
+											{llmUsageStatus.trackedFiles} session logs followed · {llmUsageStatus.pendingHours} hours waiting
+										</Typography>
+										{llmUsageStatus.lastError && (
+											<Typography variant="caption" sx={{ color: "error.main" }}>
+												{llmUsageStatus.lastError}
+											</Typography>
+										)}
+										<Button
+											size="small"
+											variant="outlined"
+											color="secondary"
+											disabled={isSyncing || !authStatus.authenticated}
+											onClick={() => void syncLlmUsage()}
+											sx={{ alignSelf: "flex-start" }}
+										>
+											{isSyncing ? "Uploading..." : "Upload now"}
+										</Button>
+									</Box>
+								)}
 							</Stack>
 						)}
 
