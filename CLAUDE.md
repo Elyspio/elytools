@@ -64,3 +64,8 @@ Cached JSON at `%LOCALAPPDATA%/elytools/config/` (Linux: `~/.config/elytools/con
 - FFmpeg features require `ffmpeg`/`ffprobe` on PATH (no bundled binary)
 - Desktop uses TypeScript decorators (`experimentalDecorators`, `emitDecoratorMetadata`)
 - Lint/format config: `defaultLintConfig` / `defaultFmtConfig` from `@elyspio/vite-eslint-config` (Oxlint + Oxfmt through vite-plus)
+
+## Git & Release Conventions
+
+- No `Co-Authored-By` trailer (nor any AI attribution line such as « Generated with Claude Code ») in commit messages, PR descriptions or squash merge messages.
+- Release notes come from the squash merge commit of the PR: keep them free of these attribution lines too (pass an explicit `--body` to `gh pr merge --squash` when the branch commits carry trailers).

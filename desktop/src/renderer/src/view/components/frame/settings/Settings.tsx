@@ -10,12 +10,15 @@ import CloudDownloadIcon from "@mui/icons-material/CloudDownload";
 import TuneIcon from "@mui/icons-material/Tune";
 import InsightsIcon from "@mui/icons-material/Insights";
 import VpnKeyIcon from "@mui/icons-material/VpnKey";
+import SystemUpdateAltIcon from "@mui/icons-material/SystemUpdateAlt";
 import type { LlmUsageStatus } from "@shared/types/llm-usage.types";
 import type { OidcAuthStatus } from "@shared/types/auth.types";
 import { AuthenticationSettings, AuthProfilePicker } from "./AuthenticationSettings";
+import { UpdatesSettings } from "./UpdatesSettings";
 import { SettingsCard, SettingsField, SettingsGrid, SettingsInput, SettingsSection, SettingsStat, SettingsToggle } from "./SettingsControls";
 
-type Section = "endpoints" | "authentication" | "torrent" | "llmUsage" | "display";
+export type SettingsSectionKey = "endpoints" | "authentication" | "torrent" | "llmUsage" | "display" | "updates";
+type Section = SettingsSectionKey;
 
 const sections: { key: Section; label: string; icon: React.ReactNode }[] = [
 	{ key: "endpoints", label: "Endpoints", icon: <LanguageIcon sx={{ fontSize: 16 }} /> },
@@ -23,15 +26,19 @@ const sections: { key: Section; label: string; icon: React.ReactNode }[] = [
 	{ key: "torrent", label: "Torrent", icon: <CloudDownloadIcon sx={{ fontSize: 16 }} /> },
 	{ key: "llmUsage", label: "LLM usage", icon: <InsightsIcon sx={{ fontSize: 16 }} /> },
 	{ key: "display", label: "Display", icon: <TuneIcon sx={{ fontSize: 16 }} /> },
+	{ key: "updates", label: "Updates", icon: <SystemUpdateAltIcon sx={{ fontSize: 16 }} /> },
 ];
 
 type OwnProps = {
 	isOpen: boolean;
 	close: () => void;
+	/** Section shown when the dialog opens, e.g. « updates » when a release is pending */
+	initialSection?: Section;
 };
 
-export const Settings: React.FC<OwnProps> = ({ close, isOpen }) => {
+export const Settings: React.FC<OwnProps> = ({ close, isOpen, initialSection }) => {
 	const config = useAppSelector((state) => state.config.current);
+	const updateStatus = useAppSelector((state) => state.config.update);
 	const dispatch = useAppDispatch();
 	const [draftConfig, setDraftConfig] = useState<LatestConfig | null>(null);
 	const [authStatuses, setAuthStatuses] = useState<OidcAuthStatus[]>([]);
@@ -55,6 +62,7 @@ export const Settings: React.FC<OwnProps> = ({ close, isOpen }) => {
 	if (draftSyncedOpen !== isOpen && (!isOpen || (config?.frame && config?.endpoints))) {
 		setDraftSyncedOpen(isOpen);
 		if (isOpen) setDraftConfig(config);
+		if (isOpen && initialSection) setActiveSection(initialSection);
 	}
 
 	const updateDraft = useCallback((updater: (draft: LatestConfig) => LatestConfig) => {
@@ -193,6 +201,9 @@ export const Settings: React.FC<OwnProps> = ({ close, isOpen }) => {
 							>
 								{s.icon}
 								<span>{s.label}</span>
+								{s.key === "updates" && (updateStatus?.state === "available" || updateStatus?.state === "downloaded") && (
+									<span className="Settings__sidebar-badge" />
+								)}
 							</Box>
 						))}
 					</Box>
@@ -327,6 +338,8 @@ export const Settings: React.FC<OwnProps> = ({ close, isOpen }) => {
 								)}
 							</Stack>
 						)}
+
+						{activeSection === "updates" && <UpdatesSettings status={updateStatus} />}
 
 						{activeSection === "display" && (
 							<SettingsSection title="Display">

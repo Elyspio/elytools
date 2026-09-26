@@ -4,6 +4,7 @@
  * Attention, on ne peut pas utiliser des types des librairies NodeJS, electron pour IpcSentEvents
  * *************************************************************************************/
 import type { IpcMainInvokeEvent } from "electron";
+import type { UpdateStatus } from "@shared/types/update.types";
 import type { SshCommandChunkEvent, SshCommandCompletedEvent, SshConnectionStatusEvent, SshTransferProgressEvent } from "@shared/types/ssh.types";
 
 export type IpcSentEvents = {
@@ -16,19 +17,9 @@ export type IpcSentEvents = {
 	 */
 	"app:screen:toggle-full-screen": (event: IpcMainInvokeEvent, isMaximized: boolean) => void;
 	/**
-	 * Event lors ce qu'une nouvelle version de l'application est disponible
-	 * @param event
-	 * @param version
+	 * État de la mise à jour automatique (vérification, disponibilité, téléchargement), à chaque changement
 	 */
-	"update:available": (event: IpcMainInvokeEvent, version: string) => void;
-	"update:download:end": (event: IpcMainInvokeEvent) => void;
-
-	/**
-	 * Mise à jour du téléchargement de la mise à jour
-	 * @param event Événement IPC
-	 * @param progress Progression du téléchargement en pourcentage
-	 */
-	"update:download:progress": (event: IpcMainInvokeEvent, progress: number) => void;
+	"update:status": (event: IpcMainInvokeEvent, status: UpdateStatus) => void;
 
 	/**
 	 * La sortie standard d'un process spawn

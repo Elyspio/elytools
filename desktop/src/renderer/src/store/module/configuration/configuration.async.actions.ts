@@ -3,7 +3,7 @@ import { createAsyncActionGenerator, getServices } from "../../utils/utils.actio
 import { addProcessStd, completeProcess } from "@modules/process/process.actions";
 import { LatestConfig } from "@shared/config/app.config";
 import { SystemService } from "@services/system/system.service";
-import { setSystemInformation } from "@modules/configuration/configuration.actions";
+import { setSystemInformation, setUpdateStatus } from "@modules/configuration/configuration.actions";
 import { initSsh } from "@modules/ssh/ssh.async.actions";
 
 const createAsyncThunk = createAsyncActionGenerator("configuration");
@@ -85,6 +85,9 @@ export const initApp = createAsyncThunk("init-app", async (_, { dispatch }) => {
 	await dispatch(initConfig());
 	await dispatch(initSsh());
 	// dispatch(watchWindowResize());
+
+	window.preload.ipc.on.update.status((status) => dispatch(setUpdateStatus(status)));
+	dispatch(setUpdateStatus(await window.preload.ipc.send.update.status()));
 
 	window.preload.ipc.on.process.spawn.exit((pid, code) => {
 		dispatch(completeProcess({ pid, exitStatus: code ?? -1 }));

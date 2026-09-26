@@ -1,4 +1,5 @@
 import { ipcRendererWrapper } from "./preload.ipc.wrapper";
+import type { UpdateStatus } from "@shared/types/update.types";
 import { SshCommandChunkEvent, SshCommandCompletedEvent, SshConnectionStatusEvent, SshTransferProgressEvent } from "@shared/types/ssh.types";
 
 export function getIpcReceiver() {
@@ -68,28 +69,11 @@ export function getIpcReceiver() {
 		},
 		update: {
 			/**
-			 * Écoute le process main pour recevoir la disponibilité d'une mise à jour
-			 * @param callback
+			 * Écoute les changements d'état de la mise à jour automatique
 			 */
-			available: (callback: (version: string) => void) => {
-				ipcRendererWrapper.on("update:available", (_, version) => {
-					callback(version);
-				});
-			},
-			/**
-			 * Event envoyé lors de la fin du téléchargement de la mise à jour
-			 */
-			downloaded: (callback: () => void) => {
-				ipcRendererWrapper.on("update:download:end", () => {
-					callback();
-				});
-			},
-			/**
-			 * Event envoyé lors de la progression du téléchargement de la mise à jour
-			 */
-			downloading: (callback: (progress: number) => void) => {
-				ipcRendererWrapper.on("update:download:progress", (_, progress) => {
-					callback(progress);
+			status: (callback: (status: UpdateStatus) => void) => {
+				ipcRendererWrapper.on("update:status", (_, status) => {
+					callback(status);
 				});
 			},
 		},

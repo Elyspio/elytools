@@ -209,6 +209,9 @@ const ipcHandlers: IpcHandledEvents = {
 	async "update:check"() {
 		await mainContainer.get(UpdateModule).checkForUpdates();
 	},
+	"update:status:get"() {
+		return mainContainer.get(UpdateModule).getStatus();
+	},
 	async "update:download:start"() {
 		await mainContainer.get(UpdateModule).downloadUpdate();
 	},
