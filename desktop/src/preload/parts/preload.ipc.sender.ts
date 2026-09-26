@@ -1,7 +1,7 @@
 import { ipcRendererWrapper } from "./preload.ipc.wrapper";
 import { GetInformationKey, GetInformationResult } from "../../shared/ipc/ipc.handled.events";
 import { appIpcSender } from "./ipc/sender/app.sender.ipc.preload";
-import { LatestConfig } from "@shared/config/app.config";
+import { LatestConfig, OidcProfile } from "@shared/config/app.config";
 import { ExecOptions, SpawnOptions } from "node:child_process";
 import { DirectoryEntry, GetFolderResult } from "@shared/types/dialog.types";
 import { ExecResult, SpawnResult } from "@shared/types/process.types";
@@ -9,7 +9,7 @@ import { RmDirOptions } from "fs";
 import { Stats } from "node:fs";
 import { FfmpegConvertOptions } from "@shared/types/ffmpeg.types";
 import { NyaaTorrentItem, TorrentAddResult } from "@shared/types/torrent.types";
-import { OidcAuthStatus } from "@shared/types/auth.types";
+import { OidcAuthStatus, OidcProfileInput, OidcSessionTokens } from "@shared/types/auth.types";
 import { LlmUsageStatus } from "@shared/types/llm-usage.types";
 import { SelectPathsOptions } from "@shared/types/dialog.types";
 import { SshCommandRequest, SshCommandRun, SshDirectoryListing, SshMachine, SshMachineInput, SshTransfer } from "@shared/types/ssh.types";
@@ -138,18 +138,29 @@ export function getIpcSender() {
 			},
 		},
 		auth: {
+			profiles: {
+				save: async (input: OidcProfileInput): Promise<OidcProfile> => {
+					return await ipcRendererWrapper.invoke("auth:profile:save", input);
+				},
+				delete: async (profileId: string) => {
+					await ipcRendererWrapper.invoke("auth:profile:delete", profileId);
+				},
+			},
 			oidc: {
-				startLogin: async () => {
-					await ipcRendererWrapper.invoke("auth:oidc:login:start");
+				startLogin: async (profileId: string) => {
+					await ipcRendererWrapper.invoke("auth:oidc:login:start", profileId);
 				},
 				cancelLogin: () => {
 					void ipcRendererWrapper.invoke("auth:oidc:login:cancel");
 				},
-				logout: async () => {
-					await ipcRendererWrapper.invoke("auth:oidc:logout");
+				logout: async (profileId: string) => {
+					await ipcRendererWrapper.invoke("auth:oidc:logout", profileId);
 				},
-				status: async (): Promise<OidcAuthStatus> => {
-					return await ipcRendererWrapper.invoke("auth:oidc:status:get");
+				statuses: async (): Promise<OidcAuthStatus[]> => {
+					return await ipcRendererWrapper.invoke("auth:oidc:status:list");
+				},
+				tokens: async (profileId: string): Promise<OidcSessionTokens> => {
+					return await ipcRendererWrapper.invoke("auth:oidc:tokens:get", profileId);
 				},
 			},
 		},

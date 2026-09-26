@@ -1,5 +1,5 @@
 import { createSlice } from "@reduxjs/toolkit";
-import { setConfig } from "./configuration.async.actions";
+import { reloadConfig, setConfig } from "./configuration.async.actions";
 import { ConfigurationState } from "@modules/configuration/configuration.types";
 import { setSystemInformation } from "@modules/configuration/configuration.actions";
 
@@ -16,6 +16,10 @@ export const slice = createSlice({
 	extraReducers: (builder) => {
 		builder.addCase(setConfig.fulfilled, (state, action) => {
 			state.current = action.meta.arg;
+		});
+
+		builder.addCase(reloadConfig.fulfilled, (state, action) => {
+			state.current = action.payload;
 		});
 
 		builder.addCase(setSystemInformation, (state, action) => {

@@ -1,5 +1,5 @@
 import type { IpcMainInvokeEvent } from "electron";
-import type { LatestConfig } from "../config/app.config";
+import type { LatestConfig, OidcProfile } from "../config/app.config";
 import type { GetInformationKey, GetInformationResult } from "./payload/ipc.system.payload";
 import type { ExecOptions, SpawnOptions } from "node:child_process";
 import type { DirectoryEntry, GetFolderResult, SelectPathsOptions } from "@shared/types/dialog.types";
@@ -8,7 +8,7 @@ import { RmDirOptions, Stats } from "node:fs";
 import { Encoder, FfmpegConvertOptions } from "@shared/types/ffmpeg.types";
 import type { FfprobeResult } from "@shared/types/ffprobe.types";
 import type { NyaaTorrentItem, TorrentAddResult } from "@shared/types/torrent.types";
-import type { OidcAuthStatus } from "@shared/types/auth.types";
+import type { OidcAuthStatus, OidcProfileInput, OidcSessionTokens } from "@shared/types/auth.types";
 import type { LlmUsageStatus } from "@shared/types/llm-usage.types";
 import type { SshCommandRequest, SshCommandRun, SshDirectoryListing, SshMachine, SshMachineInput, SshTransfer } from "@shared/types/ssh.types";
 
@@ -129,10 +129,19 @@ export interface IpcHandledEvents {
 	"torrent:nyaa:list": (event: IpcMainInvokeEvent, query: string) => Promise<NyaaTorrentItem[]>;
 	"torrent:qbittorrent:add-from-url": (event: IpcMainInvokeEvent, torrentUrl: string, infoHash?: string) => Promise<TorrentAddResult>;
 	"torrent:qbittorrent:get-hashes": (event: IpcMainInvokeEvent) => Promise<string[]>;
-	"auth:oidc:login:start": (event: IpcMainInvokeEvent) => Promise<void>;
+	"auth:profile:save": (event: IpcMainInvokeEvent, input: OidcProfileInput) => Promise<OidcProfile>;
+	/**
+	 * Supprime le profil, ses secrets, et délie les modules qui l'utilisent
+	 */
+	"auth:profile:delete": (event: IpcMainInvokeEvent, profileId: string) => Promise<void>;
+	"auth:oidc:login:start": (event: IpcMainInvokeEvent, profileId: string) => Promise<void>;
 	"auth:oidc:login:cancel": (event: IpcMainInvokeEvent) => void;
-	"auth:oidc:logout": (event: IpcMainInvokeEvent) => Promise<void>;
-	"auth:oidc:status:get": (event: IpcMainInvokeEvent) => Promise<OidcAuthStatus>;
+	"auth:oidc:logout": (event: IpcMainInvokeEvent, profileId: string) => Promise<void>;
+	"auth:oidc:status:list": (event: IpcMainInvokeEvent) => Promise<OidcAuthStatus[]>;
+	/**
+	 * Tokens du profil connecté, pour inspection dans les Settings
+	 */
+	"auth:oidc:tokens:get": (event: IpcMainInvokeEvent, profileId: string) => Promise<OidcSessionTokens>;
 	"llm-usage:status:get": (event: IpcMainInvokeEvent) => Promise<LlmUsageStatus>;
 	/**
 	 * Lit les nouveaux journaux Claude Code / Codex et envoie l'usage à LLM Usage Monitor

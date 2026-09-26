@@ -1,4 +1,7 @@
+@use "../../variables" as *;
+
 .Settings {
+	font-family: "IBM Plex Sans", sans-serif;
 	height: 70vh;
 	min-height: 400px;
 }
@@ -27,6 +30,7 @@
 }
 
 .Settings__sidebar-item {
+	font-family: "IBM Plex Sans", sans-serif;
 	display: flex;
 	align-items: center;
 	gap: 8px;
@@ -73,4 +77,130 @@
 	border: 1px solid var(--border-subtle);
 	border-radius: 8px;
 	padding: 16px;
+}
+
+.Settings__section-description {
+	margin-top: 2px;
+	font-size: 0.75rem;
+	color: var(--text-muted);
+}
+
+.Settings__card {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	background-color: var(--surface-0);
+	border: 1px solid var(--border-subtle);
+	border-radius: 10px;
+	padding: 14px;
+}
+
+.Settings__grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 12px;
+}
+
+.Settings__field {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	min-width: 0;
+
+	&--wide {
+		grid-column: span 2;
+	}
+}
+
+.Settings__label {
+	font-size: 0.7rem;
+	color: var(--text-muted);
+}
+
+.Settings__hint {
+	font-size: 0.7rem;
+	color: var(--text-faint);
+
+	&--warn {
+		color: #ffb547;
+	}
+
+	&--error {
+		color: #ff5c7a;
+	}
+}
+
+.Settings__input {
+	background-color: var(--surface-1);
+	border: 1px solid var(--border-medium);
+	border-radius: 6px;
+	padding: 2px 10px;
+	font-size: 0.8rem !important;
+	color: rgba(255, 255, 255, 0.9) !important;
+	transition:
+		border-color 120ms ease,
+		box-shadow 120ms ease;
+
+	&.Mui-focused {
+		border-color: $primary;
+		box-shadow: 0 0 0 3px rgba(79, 210, 255, 0.12);
+	}
+
+	&.Mui-disabled {
+		opacity: 0.5;
+	}
+
+	&--mono input {
+		font-family: var(--font-mono);
+		font-size: 0.75rem;
+	}
+}
+
+.Settings__toggle {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	cursor: pointer;
+
+	& + & {
+		padding-top: 12px;
+		border-top: 1px solid var(--border-subtle);
+	}
+}
+
+.Settings__toggle-title {
+	font-size: 0.8rem;
+	color: rgba(255, 255, 255, 0.9);
+}
+
+.Settings__stats {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 10px;
+}
+
+.Settings__stat {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	padding: 10px 12px;
+	border-radius: 8px;
+	background-color: var(--surface-1);
+	border: 1px solid var(--border-subtle);
+}
+
+.Settings__stat-value {
+	font-family: var(--font-mono);
+	font-size: 0.85rem;
+	color: rgba(255, 255, 255, 0.9);
+}
+
+.Settings__alert {
+	padding: 8px 12px;
+	border-radius: 8px;
+	font-size: 0.75rem;
+	color: #ff8aa0;
+	background-color: rgba(255, 92, 122, 0.06);
+	border: 1px solid rgba(255, 92, 122, 0.2);
+	word-break: break-word;
 }
