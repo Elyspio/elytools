@@ -5,7 +5,9 @@ import path from "node:path";
 import { MainContextModule } from "@main/modules/context/main.context.module";
 import { inject } from "inversify";
 
-type SecretKey = "oidc-refresh-token" | `ssh-machine:${string}:password` | `ssh-machine:${string}:private-key`;
+type SecretKey =
+	/** Single OIDC session of config V2 to V5, only deleted by the V6 migration */
+	"oidc-refresh-token" | `oidc-profile:${string}:refresh-token` | `ssh-machine:${string}:password` | `ssh-machine:${string}:private-key`;
 
 type SecretsFilePayload = Partial<Record<SecretKey, string>>;
 

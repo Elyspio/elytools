@@ -14,6 +14,15 @@ export const setConfig = createAsyncThunk("set", async (config: LatestConfig, { 
 	await services.config.set(config);
 });
 
+/**
+ * Reloads the store from the configuration written by the main process (e.g. after an auth profile change)
+ */
+export const reloadConfig = createAsyncThunk("reload", async (_, { extra }) => {
+	const services = getServices({ config: ConfigurationService }, extra);
+
+	return await services.config.get();
+});
+
 export const regenerateConfig = createAsyncThunk("regenerate", async (_, { extra }) => {
 	const services = getServices({ config: ConfigurationService }, extra);
 

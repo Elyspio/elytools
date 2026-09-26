@@ -16,8 +16,8 @@ export class QBittorrentModule extends LogModule {
 
 	@log()
 	public async getExistingHashes(): Promise<string[]> {
-		const token = await this.oidcModule.getAccessToken();
 		const config = await this.configModule.getConfig();
+		const token = await this.oidcModule.getAccessToken(config.endpoints.qbittorrent.authProfileId, "torrent");
 		const apiBaseUrl = config.endpoints.qbittorrent.apiBaseUrl.trim();
 
 		if (!apiBaseUrl) {
@@ -39,8 +39,8 @@ export class QBittorrentModule extends LogModule {
 
 	@log()
 	public async addTorrentFromUrl(torrentUrl: string, infoHash?: string): Promise<TorrentAddResult> {
-		const token = await this.oidcModule.getAccessToken();
 		const config = await this.configModule.getConfig();
+		const token = await this.oidcModule.getAccessToken(config.endpoints.qbittorrent.authProfileId, "torrent");
 		const apiBaseUrl = config.endpoints.qbittorrent.apiBaseUrl.trim();
 
 		if (!apiBaseUrl) {

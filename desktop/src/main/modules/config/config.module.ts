@@ -3,7 +3,8 @@ import path from "path";
 import * as fs from "node:fs";
 import type { LatestConfig, LocalConfig } from "@shared/config/app.config";
 import { MainContextModule } from "../context/main.context.module";
-import { ConfigMigrationModule, defaultLlmUsageConfiguration } from "./config.migration.module";
+import { ConfigMigrationModule, defaultAuthConfiguration, defaultLlmUsageConfiguration } from "./config.migration.module";
+import { SecureStorageModule } from "../security/secure-storage.module";
 import { log } from "../../utils/logs.utils";
 import { inject, injectable } from "inversify";
 
@@ -14,7 +15,8 @@ export class ConfigModule extends LogModule {
 
 	public constructor(
 		@inject(MainContextModule) private readonly mainContextModule: MainContextModule,
-		@inject(ConfigMigrationModule) private readonly configMigrationModule: ConfigMigrationModule
+		@inject(ConfigMigrationModule) private readonly configMigrationModule: ConfigMigrationModule,
+		@inject(SecureStorageModule) private readonly secureStorageModule: SecureStorageModule
 	) {
 		super("ConfigModule");
 		const configFolder = path.dirname(this.configFilePath);
@@ -29,6 +31,7 @@ export class ConfigModule extends LogModule {
 
 	@log.debug(false)
 	public async writeConfig(config: LatestConfig) {
+		config = this.unbindUnknownAuthProfiles(config);
 		this.configCache = config;
 		await fs.promises.writeFile(this.configFilePath, JSON.stringify(config, null, 4));
 	}
@@ -49,8 +52,10 @@ export class ConfigModule extends LogModule {
 
 		if (this.configMigrationModule.requireMigration(parsedConfig)) {
 			const migrated = await this.configMigrationModule.migrate(parsedConfig);
+			// The session of the single OIDC configuration (V2 to V5) belongs to no profile anymore.
+			await this.secureStorageModule.deleteSecret("oidc-refresh-token");
 			await this.writeConfig(migrated);
-			return migrated;
+			return this.configCache!;
 		}
 
 		this.configCache = parsedConfig;
@@ -64,6 +69,21 @@ export class ConfigModule extends LogModule {
 		await this.writeConfig(this.configCache);
 
 		return this.configCache;
+	}
+
+	/**
+	 * A module bound to a deleted profile is left without profile.
+	 */
+	private unbindUnknownAuthProfiles(config: LatestConfig): LatestConfig {
+		const known = (profileId: string | null) => (profileId && config.auth.profiles.some((profile) => profile.id === profileId) ? profileId : null);
+		return {
+			...config,
+			endpoints: {
+				...config.endpoints,
+				qbittorrent: { ...config.endpoints.qbittorrent, authProfileId: known(config.endpoints.qbittorrent.authProfileId) },
+			},
+			llmUsage: { ...config.llmUsage, authProfileId: known(config.llmUsage.authProfileId) },
+		};
 	}
 
 	/**
@@ -83,7 +103,7 @@ export class ConfigModule extends LogModule {
 	@log.debug()
 	private async getDefaultConfig(): Promise<LatestConfig> {
 		return {
-			version: 5,
+			version: 6,
 			windows: { position: {} },
 			appboard: { show: [] },
 			frame: {
@@ -103,15 +123,10 @@ export class ConfigModule extends LogModule {
 				},
 				qbittorrent: {
 					apiBaseUrl: "",
-				},
-				oidc: {
-					issuerUrl: "",
-					clientId: "",
-					clientSecret: "",
-					scopes: "openid profile offline_access",
-					redirectPath: "auth/callback",
+					authProfileId: null,
 				},
 			},
+			auth: defaultAuthConfiguration(),
 			ssh: {
 				machines: [],
 				folders: [],

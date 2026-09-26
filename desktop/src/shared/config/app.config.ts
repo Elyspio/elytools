@@ -24,9 +24,9 @@ export type SshConfiguration = {
 	folders: SshFolderConfiguration[];
 };
 
-export type LocalConfig = LocalConfigV1 | LocalConfigV2 | LocalConfigV3 | LocalConfigV4 | LocalConfigV5;
+export type LocalConfig = LocalConfigV1 | LocalConfigV2 | LocalConfigV3 | LocalConfigV4 | LocalConfigV5 | LocalConfigV6;
 
-export type LatestConfig = LocalConfigV5;
+export type LatestConfig = LocalConfigV6;
 
 export type PositionWindowKey = "main";
 
@@ -40,12 +40,32 @@ export type FrameConfiguration = {
 	};
 };
 
+/**
+ * Legacy single OIDC configuration (config V2 to V5), replaced by {@link AuthConfiguration} profiles.
+ */
 export type OidcConfiguration = {
 	issuerUrl: string;
 	clientId: string;
 	clientSecret: string;
 	scopes: string;
 	redirectPath: string;
+};
+
+/**
+ * Named OIDC provider (e.g. one Keycloak realm), with its own session. Public client: PKCE, no client secret.
+ */
+export type OidcProfile = {
+	id: string;
+	name: string;
+	issuerUrl: string;
+	clientId: string;
+	scopes: string;
+};
+
+export type AuthConfiguration = {
+	/** Shared by every profile: elytools://<redirectPath>, the pending login is found by its state. */
+	redirectPath: string;
+	profiles: OidcProfile[];
 };
 
 /**
@@ -110,6 +130,15 @@ export type LocalConfigV4 = Omit<LocalConfigV3, "version" | "ssh"> & {
 export type LocalConfigV5 = Omit<LocalConfigV4, "version"> & {
 	version: 5;
 	llmUsage: LlmUsageConfiguration;
+};
+
+export type LocalConfigV6 = Omit<LocalConfigV5, "version" | "endpoints" | "llmUsage"> & {
+	version: 6;
+	auth: AuthConfiguration;
+	endpoints: Omit<LocalConfigV5["endpoints"], "oidc" | "qbittorrent"> & {
+		qbittorrent: QBittorrentConfiguration & { authProfileId: string | null };
+	};
+	llmUsage: LlmUsageConfiguration & { authProfileId: string | null };
 };
 
 export type WindowPosition = Pick<BrowserWindowConstructorOptions, "x" | "y" | "width" | "height">;

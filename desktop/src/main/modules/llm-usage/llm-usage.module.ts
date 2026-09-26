@@ -8,6 +8,7 @@ import { OidcModule } from "@main/modules/auth/oidc.module";
 import { ConfigModule } from "@main/modules/config/config.module";
 import { MainContextModule } from "@main/modules/context/main.context.module";
 import { LogModule } from "@main/modules/log.module";
+import type { LatestConfig } from "@shared/config/app.config";
 import type { LlmUsageStatus } from "@shared/types/llm-usage.types";
 import { type CodexFileState, emptyCodexFileState, emptyState, parseBucketKey, prune, readClaudeLine, readCodexLine, splitLines, type UsageState } from "./llm-usage.parser";
 
@@ -107,7 +108,7 @@ export class LlmUsageModule extends LogModule {
 			await this.scan(state);
 			prune(state.usage, Date.now(), RETENTION_DAYS);
 			await this.saveState(state);
-			await this.upload(state, llmUsage.apiBaseUrl, llmUsage.machineName);
+			await this.upload(state, llmUsage);
 			this.status.lastSuccessAt = new Date().toISOString();
 			this.status.lastError = null;
 		} catch (error) {
@@ -181,7 +182,7 @@ export class LlmUsageModule extends LogModule {
 		}
 	}
 
-	private async upload(state: PersistedState, apiBaseUrl: string, machineName: string) {
+	private async upload(state: PersistedState, { apiBaseUrl, machineName, authProfileId }: LatestConfig["llmUsage"]) {
 		const baseUrl = apiBaseUrl.trim().replace(/\/$/, "");
 		if (!baseUrl) throw new Error("LLM Usage Monitor URL is not configured");
 
@@ -191,7 +192,7 @@ export class LlmUsageModule extends LogModule {
 		// An empty upload still records the workstation and its last contact.
 		for (let index = 0; index === 0 || index < keys.length; index += MAX_BUCKETS) {
 			const batch = keys.slice(index, index + MAX_BUCKETS);
-			const token = await this.oidcModule.getAccessToken();
+			const token = await this.oidcModule.getAccessToken(authProfileId, "llm-usage");
 			const response = await fetch(`${baseUrl}/api/token-usage`, {
 				method: "POST",
 				headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },

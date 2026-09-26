@@ -1,25 +1,28 @@
-import { Box, Button, Checkbox, Dialog, DialogActions, DialogContent, FormControlLabel, FormGroup, Stack, Switch, TextField, Typography } from "@mui/material";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Box, Button, Dialog, DialogActions, DialogContent, Stack, Typography } from "@mui/material";
+import React, { useCallback, useEffect, useState } from "react";
 import "./Settings.scss";
-import { resetDimensions, setConfig } from "@modules/configuration/configuration.async.actions";
+import { reloadConfig, setConfig } from "@modules/configuration/configuration.async.actions";
 import { useAppDispatch, useAppSelector } from "@store";
-import { AppBoardShow, FrameConfiguration, LatestConfig } from "@shared/config/app.config";
+import { LatestConfig } from "@shared/config/app.config";
 import { toast } from "react-toastify";
 import LanguageIcon from "@mui/icons-material/Language";
 import CloudDownloadIcon from "@mui/icons-material/CloudDownload";
 import TuneIcon from "@mui/icons-material/Tune";
-import DashboardIcon from "@mui/icons-material/Dashboard";
 import InsightsIcon from "@mui/icons-material/Insights";
+import VpnKeyIcon from "@mui/icons-material/VpnKey";
 import type { LlmUsageStatus } from "@shared/types/llm-usage.types";
+import type { OidcAuthStatus } from "@shared/types/auth.types";
+import { AuthenticationSettings, AuthProfilePicker } from "./AuthenticationSettings";
+import { SettingsCard, SettingsField, SettingsGrid, SettingsInput, SettingsSection, SettingsStat, SettingsToggle } from "./SettingsControls";
 
-type Section = "endpoints" | "torrent" | "llmUsage" | "display" | "appboard";
+type Section = "endpoints" | "authentication" | "torrent" | "llmUsage" | "display";
 
 const sections: { key: Section; label: string; icon: React.ReactNode }[] = [
 	{ key: "endpoints", label: "Endpoints", icon: <LanguageIcon sx={{ fontSize: 16 }} /> },
-	{ key: "torrent", label: "Torrent & Auth", icon: <CloudDownloadIcon sx={{ fontSize: 16 }} /> },
+	{ key: "authentication", label: "Authentication", icon: <VpnKeyIcon sx={{ fontSize: 16 }} /> },
+	{ key: "torrent", label: "Torrent", icon: <CloudDownloadIcon sx={{ fontSize: 16 }} /> },
 	{ key: "llmUsage", label: "LLM usage", icon: <InsightsIcon sx={{ fontSize: 16 }} /> },
 	{ key: "display", label: "Display", icon: <TuneIcon sx={{ fontSize: 16 }} /> },
-	{ key: "appboard", label: "Appboard", icon: <DashboardIcon sx={{ fontSize: 16 }} /> },
 ];
 
 type OwnProps = {
@@ -31,33 +34,27 @@ export const Settings: React.FC<OwnProps> = ({ close, isOpen }) => {
 	const config = useAppSelector((state) => state.config.current);
 	const dispatch = useAppDispatch();
 	const [draftConfig, setDraftConfig] = useState<LatestConfig | null>(null);
-	const [authStatus, setAuthStatus] = useState({
-		configured: false,
-		authenticated: false,
-		hasRefreshToken: false,
-	});
-	const [isAuthenticating, setIsAuthenticating] = useState(false);
+	const [authStatuses, setAuthStatuses] = useState<OidcAuthStatus[]>([]);
 	const [activeSection, setActiveSection] = useState<Section>("endpoints");
 	const [llmUsageStatus, setLlmUsageStatus] = useState<LlmUsageStatus | null>(null);
 	const [isSyncing, setIsSyncing] = useState(false);
 
-	const appboardOptions = useMemo(() => [AppBoardShow.external, AppBoardShow.internal, AppBoardShow.hidden], []);
-
-	const refreshAuthStatus = useCallback(async () => {
-		setAuthStatus(await window.preload.ipc.send.auth.oidc.status());
+	const refreshAuthStatuses = useCallback(async () => {
+		setAuthStatuses(await window.preload.ipc.send.auth.oidc.statuses());
 	}, []);
 
 	useEffect(() => {
 		if (!isOpen) return;
-		void window.preload.ipc.send.auth.oidc.status().then(setAuthStatus);
+		void window.preload.ipc.send.auth.oidc.statuses().then(setAuthStatuses);
 		void window.preload.ipc.send.llmUsage.status().then(setLlmUsageStatus);
 	}, [isOpen]);
 
-	// Sync the draft from the store while the dialog is open (adjusting state during render instead of in an effect)
-	const [draftSyncedFrom, setDraftSyncedFrom] = useState<{ config: typeof config; isOpen: boolean } | null>(null);
-	if (draftSyncedFrom === null || draftSyncedFrom.config !== config || draftSyncedFrom.isOpen !== isOpen) {
-		setDraftSyncedFrom({ config, isOpen });
-		if (isOpen && config?.frame && config?.endpoints) setDraftConfig(config);
+	// Take the draft from the store when the dialog opens (adjusting state during render instead of in an effect).
+	// Later store changes (auth profiles) are merged into the draft by hand, so the unsaved edits survive.
+	const [draftSyncedOpen, setDraftSyncedOpen] = useState(false);
+	if (draftSyncedOpen !== isOpen && (!isOpen || (config?.frame && config?.endpoints))) {
+		setDraftSyncedOpen(isOpen);
+		if (isOpen) setDraftConfig(config);
 	}
 
 	const updateDraft = useCallback((updater: (draft: LatestConfig) => LatestConfig) => {
@@ -85,31 +82,30 @@ export const Settings: React.FC<OwnProps> = ({ close, isOpen }) => {
 		[updateDraft]
 	);
 
-	const toggleResize = useCallback(
-		(dimension: keyof FrameConfiguration["resize"], state: boolean) => {
-			updateDraft((draft) => ({
-				...draft,
-				frame: {
-					...draft.frame,
-					resize: { ...draft.frame.resize, [dimension]: state },
-				},
-			}));
+	const setRedirectPath = useCallback(
+		(redirectPath: string) => {
+			updateDraft((draft) => ({ ...draft, auth: { ...draft.auth, redirectPath } }));
 		},
 		[updateDraft]
 	);
 
-	const setOidcField = useCallback(
-		(field: "issuerUrl" | "clientId" | "clientSecret" | "scopes" | "redirectPath", value: string) => {
-			updateDraft((draft) => ({
-				...draft,
-				endpoints: {
-					...draft.endpoints,
-					oidc: { ...draft.endpoints.oidc, [field]: value },
-				},
-			}));
-		},
-		[updateDraft]
-	);
+	/**
+	 * Profiles are saved right away by the main process: reload the store and merge them into the draft.
+	 */
+	const onProfilesChange = useCallback(async () => {
+		const saved = await dispatch(reloadConfig()).unwrap();
+		const known = (profileId: string | null) => (profileId && saved.auth.profiles.some((profile) => profile.id === profileId) ? profileId : null);
+		updateDraft((draft) => ({
+			...draft,
+			auth: { ...draft.auth, profiles: saved.auth.profiles },
+			endpoints: {
+				...draft.endpoints,
+				qbittorrent: { ...draft.endpoints.qbittorrent, authProfileId: known(draft.endpoints.qbittorrent.authProfileId) },
+			},
+			llmUsage: { ...draft.llmUsage, authProfileId: known(draft.llmUsage.authProfileId) },
+		}));
+		await refreshAuthStatuses();
+	}, [dispatch, refreshAuthStatuses, updateDraft]);
 
 	const setEndpointField = useCallback(
 		(field: "homeAssistant" | "api", value: string) => {
@@ -134,13 +130,13 @@ export const Settings: React.FC<OwnProps> = ({ close, isOpen }) => {
 		[updateDraft]
 	);
 
-	const setQbittorrentApiBaseUrl = useCallback(
-		(apiBaseUrl: string) => {
+	const setQbittorrentField = useCallback(
+		<K extends keyof LatestConfig["endpoints"]["qbittorrent"]>(field: K, value: LatestConfig["endpoints"]["qbittorrent"][K]) => {
 			updateDraft((draft) => ({
 				...draft,
 				endpoints: {
 					...draft.endpoints,
-					qbittorrent: { ...draft.endpoints.qbittorrent, apiBaseUrl },
+					qbittorrent: { ...draft.endpoints.qbittorrent, [field]: value },
 				},
 			}));
 		},
@@ -169,40 +165,6 @@ export const Settings: React.FC<OwnProps> = ({ close, isOpen }) => {
 		}
 	}, [saveConfig]);
 
-	const toggleAppboard = useCallback(
-		(value: AppBoardShow, checked: boolean) => {
-			updateDraft((draft) => {
-				const show = draft.appboard.show;
-				const next = checked ? Array.from(new Set([...show, value])) : show.filter((entry) => entry !== value);
-				return { ...draft, appboard: { ...draft.appboard, show: next } };
-			});
-		},
-		[updateDraft]
-	);
-
-	const login = useCallback(async () => {
-		setIsAuthenticating(true);
-		try {
-			await saveConfig();
-			await window.preload.ipc.send.auth.oidc.startLogin();
-			await refreshAuthStatus();
-			toast.success("Authenticated successfully");
-		} catch (error) {
-			toast.error((error as Error).message);
-		} finally {
-			setIsAuthenticating(false);
-		}
-	}, [refreshAuthStatus, saveConfig]);
-
-	const cancelLogin = useCallback(() => {
-		window.preload.ipc.send.auth.oidc.cancelLogin();
-	}, []);
-
-	const logout = useCallback(async () => {
-		await window.preload.ipc.send.auth.oidc.logout();
-		await refreshAuthStatus();
-	}, [refreshAuthStatus]);
-
 	const saveAll = useCallback(async () => {
 		try {
 			await saveConfig();
@@ -214,6 +176,8 @@ export const Settings: React.FC<OwnProps> = ({ close, isOpen }) => {
 	}, [close, saveConfig]);
 
 	if (!draftConfig?.frame || !draftConfig?.endpoints) return null;
+
+	const isLlmUsageAuthenticated = authStatuses.some((status) => status.profileId === draftConfig.llmUsage.authProfileId && status.authenticated);
 
 	return (
 		<Dialog open={isOpen} onClose={close} maxWidth={"md"} fullWidth aria-labelledby="settings-dialog-title">
@@ -235,210 +199,146 @@ export const Settings: React.FC<OwnProps> = ({ close, isOpen }) => {
 
 					<Box className={"Settings__content"}>
 						{activeSection === "endpoints" && (
-							<Stack spacing={2}>
-								<Typography className={"Settings__section-title"}>General Endpoints</Typography>
-								<Box className={"Settings__field-group"}>
-									<TextField
-										label="Home Assistant URL"
-										value={draftConfig.endpoints.homeAssistant}
-										onChange={(e) => setEndpointField("homeAssistant", e.target.value)}
-										size="small"
-										fullWidth
-									/>
-									<TextField label="API URL" value={draftConfig.endpoints.api} onChange={(e) => setEndpointField("api", e.target.value)} size="small" fullWidth />
-									<TextField
-										label="Screenshare hub"
-										value={draftConfig.endpoints.hubs.screenshare}
-										onChange={(e) => setScreenshareHub(e.target.value)}
-										size="small"
-										fullWidth
-									/>
-								</Box>
-							</Stack>
+							<SettingsSection title="Endpoints" description="Services of the home infrastructure used by the modules.">
+								<SettingsCard>
+									<SettingsField label="Home Assistant URL">
+										<SettingsInput
+											mono
+											value={draftConfig.endpoints.homeAssistant}
+											onChange={(e) => setEndpointField("homeAssistant", e.target.value)}
+											placeholder="https://ha.example.com"
+										/>
+									</SettingsField>
+									<SettingsGrid>
+										<SettingsField label="API URL">
+											<SettingsInput
+												mono
+												value={draftConfig.endpoints.api}
+												onChange={(e) => setEndpointField("api", e.target.value)}
+												placeholder="https://api.example.com"
+											/>
+										</SettingsField>
+										<SettingsField label="Screenshare hub">
+											<SettingsInput
+												mono
+												value={draftConfig.endpoints.hubs.screenshare}
+												onChange={(e) => setScreenshareHub(e.target.value)}
+												placeholder="https://api.example.com/ws/screenshare"
+											/>
+										</SettingsField>
+									</SettingsGrid>
+								</SettingsCard>
+							</SettingsSection>
+						)}
+
+						{activeSection === "authentication" && (
+							<AuthenticationSettings
+								redirectPath={draftConfig.auth.redirectPath}
+								onRedirectPathChange={setRedirectPath}
+								profiles={draftConfig.auth.profiles}
+								statuses={authStatuses}
+								bindings={{ torrent: draftConfig.endpoints.qbittorrent.authProfileId, "llm-usage": draftConfig.llmUsage.authProfileId }}
+								beforeLogin={saveConfig}
+								onProfilesChange={onProfilesChange}
+								refreshStatuses={refreshAuthStatuses}
+							/>
 						)}
 
 						{activeSection === "torrent" && (
-							<Stack spacing={2}>
-								<Typography className={"Settings__section-title"}>Torrent & Authentication</Typography>
-								<Box className={"Settings__field-group"}>
-									<TextField
-										label="qBittorrent API base URL"
-										value={draftConfig.endpoints.qbittorrent.apiBaseUrl}
-										onChange={(e) => setQbittorrentApiBaseUrl(e.target.value)}
-										size="small"
-										fullWidth
+							<SettingsSection title="qBittorrent" description="Torrents found on Nyaa are sent to this instance.">
+								<SettingsCard>
+									<SettingsField label="API base URL" hint="Base URL of the qBittorrent Web API (/api/v2 is appended).">
+										<SettingsInput
+											mono
+											value={draftConfig.endpoints.qbittorrent.apiBaseUrl}
+											onChange={(e) => setQbittorrentField("apiBaseUrl", e.target.value)}
+											placeholder="https://torrent.example.com"
+										/>
+									</SettingsField>
+									<AuthProfilePicker
+										profiles={draftConfig.auth.profiles}
+										statuses={authStatuses}
+										value={draftConfig.endpoints.qbittorrent.authProfileId}
+										onChange={(profileId) => setQbittorrentField("authProfileId", profileId)}
+										onManageProfiles={() => setActiveSection("authentication")}
 									/>
-								</Box>
-
-								<Typography className={"Settings__section-title"}>OIDC Configuration</Typography>
-								<Box className={"Settings__field-group"}>
-									<TextField
-										label="Issuer URL"
-										value={draftConfig.endpoints.oidc.issuerUrl}
-										onChange={(e) => setOidcField("issuerUrl", e.target.value)}
-										size="small"
-										fullWidth
-									/>
-									<TextField
-										label="Client ID"
-										value={draftConfig.endpoints.oidc.clientId}
-										onChange={(e) => setOidcField("clientId", e.target.value)}
-										size="small"
-										fullWidth
-									/>
-									<TextField
-										label="Client Secret"
-										value={draftConfig.endpoints.oidc.clientSecret}
-										onChange={(e) => setOidcField("clientSecret", e.target.value)}
-										size="small"
-										fullWidth
-										type="password"
-										helperText="Leave empty for public clients (PKCE only)"
-									/>
-									<TextField
-										label="Scopes"
-										value={draftConfig.endpoints.oidc.scopes}
-										onChange={(e) => setOidcField("scopes", e.target.value)}
-										size="small"
-										fullWidth
-									/>
-									<TextField
-										label="Redirect path"
-										value={draftConfig.endpoints.oidc.redirectPath}
-										onChange={(e) => setOidcField("redirectPath", e.target.value)}
-										size="small"
-										fullWidth
-										helperText={`Final redirect URI: elytools://${draftConfig.endpoints.oidc.redirectPath.replace(/^\//, "")}`}
-									/>
-								</Box>
-
-								<Box className={"Settings__field-group"}>
-									<Stack
-										direction="row"
-										spacing={1}
-										sx={{
-											alignItems: "center",
-										}}
-									>
-										{!authStatus.authenticated ? (
-											<Button size="small" variant="outlined" color="secondary" disabled={isAuthenticating} onClick={() => void login()}>
-												Login
-											</Button>
-										) : (
-											<Button size="small" variant="outlined" color="secondary" onClick={() => void logout()}>
-												Logout
-											</Button>
-										)}
-										{isAuthenticating && (
-											<Button size="small" variant="outlined" color="error" onClick={cancelLogin}>
-												Cancel
-											</Button>
-										)}
-										<Typography variant="caption" sx={{ color: authStatus.authenticated ? "#00FF88" : "var(--text-muted)" }}>
-											{isAuthenticating ? "Waiting for browser..." : authStatus.authenticated ? "Authenticated" : "Not authenticated"}
-										</Typography>
-									</Stack>
-								</Box>
-							</Stack>
+								</SettingsCard>
+							</SettingsSection>
 						)}
 
 						{activeSection === "llmUsage" && (
-							<Stack spacing={2}>
-								<Typography className={"Settings__section-title"}>LLM Usage Monitor</Typography>
-								<Box className={"Settings__field-group"}>
-									<FormControlLabel
-										control={<Switch checked={draftConfig.llmUsage.enabled} onChange={(e) => setLlmUsageField("enabled", e.target.checked)} />}
-										label="Upload the Claude Code and Codex usage of this workstation"
-									/>
-									<TextField
-										label="LLM Usage Monitor URL"
-										value={draftConfig.llmUsage.apiBaseUrl}
-										onChange={(e) => setLlmUsageField("apiBaseUrl", e.target.value)}
-										size="small"
-										fullWidth
-									/>
-									<TextField
-										label="Workstation name"
-										value={draftConfig.llmUsage.machineName}
-										onChange={(e) => setLlmUsageField("machineName", e.target.value)}
-										size="small"
-										fullWidth
-										helperText="Shown in the workstation filter of the Usage page; renaming keeps the history."
-									/>
-									<Typography variant="caption" sx={{ color: "var(--text-muted)" }}>
-										Uses the OIDC sign-in of « Torrent & Auth »: the account needs the llm-usage-monitor:admin role. Uploads every 5 minutes, window closed
-										included.
-									</Typography>
-								</Box>
+							<Stack spacing={2.5}>
+								<SettingsSection
+									title="LLM Usage Monitor"
+									description="Claude Code and Codex token usage of this workstation, uploaded every 5 minutes (window closed included)."
+								>
+									<SettingsCard>
+										<SettingsToggle
+											title="Upload usage"
+											description="Disabled: session logs are neither read nor sent."
+											checked={draftConfig.llmUsage.enabled}
+											onChange={(enabled) => setLlmUsageField("enabled", enabled)}
+										/>
+									</SettingsCard>
+									<SettingsCard>
+										<SettingsGrid>
+											<SettingsField label="Monitor URL">
+												<SettingsInput
+													mono
+													value={draftConfig.llmUsage.apiBaseUrl}
+													onChange={(e) => setLlmUsageField("apiBaseUrl", e.target.value)}
+													placeholder="https://monitor.example.com"
+												/>
+											</SettingsField>
+											<SettingsField label="Workstation name" hint="Renaming keeps the history.">
+												<SettingsInput value={draftConfig.llmUsage.machineName} onChange={(e) => setLlmUsageField("machineName", e.target.value)} />
+											</SettingsField>
+										</SettingsGrid>
+										<AuthProfilePicker
+											profiles={draftConfig.auth.profiles}
+											statuses={authStatuses}
+											value={draftConfig.llmUsage.authProfileId}
+											onChange={(profileId) => setLlmUsageField("authProfileId", profileId)}
+											onManageProfiles={() => setActiveSection("authentication")}
+										/>
+										<span className="Settings__hint">The account of the profile needs the llm-usage-monitor:admin role.</span>
+									</SettingsCard>
+								</SettingsSection>
 
 								{llmUsageStatus && (
-									<Box className={"Settings__field-group"}>
-										<Typography variant="caption" sx={{ color: "var(--text-muted)" }}>
-											Last upload: {llmUsageStatus.lastSuccessAt ? new Date(llmUsageStatus.lastSuccessAt).toLocaleString() : "never"} ·{" "}
-											{llmUsageStatus.trackedFiles} session logs followed · {llmUsageStatus.pendingHours} hours waiting
-										</Typography>
-										{llmUsageStatus.lastError && (
-											<Typography variant="caption" sx={{ color: "error.main" }}>
-												{llmUsageStatus.lastError}
-											</Typography>
-										)}
-										<Button
-											size="small"
-											variant="outlined"
-											color="secondary"
-											disabled={isSyncing || !authStatus.authenticated}
-											onClick={() => void syncLlmUsage()}
-											sx={{ alignSelf: "flex-start" }}
-										>
-											{isSyncing ? "Uploading..." : "Upload now"}
-										</Button>
-									</Box>
+									<SettingsSection
+										title="Sync"
+										action={
+											<Button size="small" variant="outlined" disabled={isSyncing || !isLlmUsageAuthenticated} onClick={() => void syncLlmUsage()}>
+												{isSyncing ? "Uploading…" : "Upload now"}
+											</Button>
+										}
+									>
+										<Box className="Settings__stats">
+											<SettingsStat
+												label="Last upload"
+												value={llmUsageStatus.lastSuccessAt ? new Date(llmUsageStatus.lastSuccessAt).toLocaleString() : "Never"}
+											/>
+											<SettingsStat label="Session logs followed" value={llmUsageStatus.trackedFiles} />
+											<SettingsStat label="Hours waiting" value={llmUsageStatus.pendingHours} />
+										</Box>
+										{llmUsageStatus.lastError && <Box className="Settings__alert">{llmUsageStatus.lastError}</Box>}
+									</SettingsSection>
 								)}
 							</Stack>
 						)}
 
 						{activeSection === "display" && (
-							<Stack spacing={2}>
-								<Typography className={"Settings__section-title"}>Frame</Typography>
-								<Box className={"Settings__field-group"}>
-									<FormGroup>
-										<FormControlLabel
-											control={<Switch checked={draftConfig.frame.show.resourceUtilization} onChange={(e) => toggleResources(e.target.checked)} />}
-											label="Show resource utilization"
-										/>
-										<FormControlLabel
-											control={<Switch checked={draftConfig.frame.resize.width} onChange={(e) => toggleResize("width", e.target.checked)} />}
-											label="Allow width resize"
-										/>
-										<FormControlLabel
-											control={<Switch checked={draftConfig.frame.resize.height} onChange={(e) => toggleResize("height", e.target.checked)} />}
-											label="Allow height resize"
-										/>
-									</FormGroup>
-									<Button variant="outlined" size="small" onClick={() => void dispatch(resetDimensions())} sx={{ alignSelf: "flex-start" }}>
-										Auto-fit dimensions
-									</Button>
-								</Box>
-							</Stack>
-						)}
-
-						{activeSection === "appboard" && (
-							<Stack spacing={2}>
-								<Typography className={"Settings__section-title"}>Module Visibility</Typography>
-								<Box className={"Settings__field-group"}>
-									<FormGroup>
-										{appboardOptions.map((option) => (
-											<FormControlLabel
-												key={option}
-												control={
-													<Checkbox checked={draftConfig.appboard.show.includes(option)} onChange={(e) => toggleAppboard(option, e.target.checked)} />
-												}
-												label={option}
-											/>
-										))}
-									</FormGroup>
-								</Box>
-							</Stack>
+							<SettingsSection title="Display">
+								<SettingsCard>
+									<SettingsToggle
+										title="Resource utilization"
+										description="CPU, memory and GPU load at the bottom of the window."
+										checked={draftConfig.frame.show.resourceUtilization}
+										onChange={toggleResources}
+									/>
+								</SettingsCard>
+							</SettingsSection>
 						)}
 					</Box>
 				</Stack>

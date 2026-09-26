@@ -135,8 +135,10 @@ const ipcHandlers: IpcHandledEvents = {
 	"config:local:regenerate"() {
 		return mainContainer.get(ConfigModule).regenerateConfig();
 	},
-	"config:local:set"(_, config) {
-		return mainContainer.get(ConfigModule).writeConfig(config);
+	async "config:local:set"(_, config) {
+		// Profiles are owned by OidcModule (auth:profile:*): a Settings draft must not bring back a stale list.
+		const { auth } = await mainContainer.get(ConfigModule).getConfig();
+		await mainContainer.get(ConfigModule).writeConfig({ ...config, auth: { ...config.auth, profiles: auth.profiles } });
 	},
 	async "dialog:selectDirectory"(_, returnFiles) {
 		return mainContainer.get(FileModule).getFolder({ returnFiles });
@@ -225,17 +227,26 @@ const ipcHandlers: IpcHandledEvents = {
 	async "torrent:qbittorrent:get-hashes"() {
 		return await mainContainer.get(QBittorrentModule).getExistingHashes();
 	},
-	async "auth:oidc:login:start"() {
-		await mainContainer.get(OidcModule).startLogin();
+	async "auth:profile:save"(_, input) {
+		return await mainContainer.get(OidcModule).saveProfile(input);
+	},
+	async "auth:profile:delete"(_, profileId: string) {
+		await mainContainer.get(OidcModule).deleteProfile(profileId);
+	},
+	async "auth:oidc:login:start"(_, profileId: string) {
+		await mainContainer.get(OidcModule).startLogin(profileId);
 	},
 	"auth:oidc:login:cancel"() {
 		mainContainer.get(OidcModule).cancelLogin();
 	},
-	async "auth:oidc:logout"() {
-		await mainContainer.get(OidcModule).logout();
+	async "auth:oidc:logout"(_, profileId: string) {
+		await mainContainer.get(OidcModule).logout(profileId);
 	},
-	async "auth:oidc:status:get"() {
-		return await mainContainer.get(OidcModule).getStatus();
+	async "auth:oidc:status:list"() {
+		return await mainContainer.get(OidcModule).listStatus();
+	},
+	async "auth:oidc:tokens:get"(_, profileId: string) {
+		return await mainContainer.get(OidcModule).getSessionTokens(profileId);
 	},
 	async "llm-usage:status:get"() {
 		return await mainContainer.get(LlmUsageModule).getStatus();
