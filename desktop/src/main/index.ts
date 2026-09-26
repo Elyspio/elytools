@@ -54,9 +54,8 @@ if (hasSingleInstanceLock) {
 		mainContainer.get(TrayIconModule).createTrayIcon(mainWindow);
 		mainContainer.get(LlmUsageModule).start();
 
-		mainWindow.on("show", () => {
-			void mainContainer.get(UpdateModule).checkForUpdates();
-		});
+		// The window may already be shown (or start hidden in the tray): check now, then every hour
+		void mainContainer.get(UpdateModule).checkForUpdates();
 
 		app.on("activate", function () {
 			// On macOS it's common to re-create a window in the app when the

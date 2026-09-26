@@ -1,4 +1,5 @@
 import { LatestConfig } from "@shared/config/app.config";
+import type { UpdateStatus } from "@shared/types/update.types";
 
 type SystemInformation = {
 	cpuLoad?: number;
@@ -10,4 +11,5 @@ export interface ConfigurationState {
 	current: LatestConfig;
 	isWindowUnderSized: boolean;
 	system: SystemInformation;
+	update: UpdateStatus | null;
 }

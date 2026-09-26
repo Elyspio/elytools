@@ -1,6 +1,6 @@
 {
 	"name": "elytools",
-	"version": "1.12.0",
+	"version": "1.12.1",
 	"description": "An Electron application with React and TypeScript",
 	"author": "jona.guich69@gmail.com",
 	"repository": {
@@ -12,9 +12,7 @@
 		"clean": "tsx ./scripts/clean/clean-release.ts",
 		"clean:bundle": "tsx ./scripts/clean/clean-bundle.ts",
 		"postinstall": "install-electron",
-		"check": "vp check",
-		"lint": "vp lint",
-		"fmt": "vp fmt",
+		"check": "vp check --fix",
 		"test": "vp test",
 		"typecheck": "tsc --watch --noEmit",
 		"start": "electron-vite preview",

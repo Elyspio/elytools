@@ -22,7 +22,7 @@ const CLEAR_DELAY = 3000;
 
 export function Torrent() {
 	const dispatch = useAppDispatch();
-	const { query, results, loading, sendStatuses, parseEpisodeInfos } = useAppSelector((s) => s.torrent);
+	const { query, results, loading, parseEpisodeInfos } = useAppSelector((s) => s.torrent);
 
 	const [forceVostfr, setForceVostfr] = useState(true);
 	const [forceResolution, setForceResolution] = useState<Resolution>("1080p");
@@ -145,7 +145,7 @@ export function Torrent() {
 				renderCell: ({ row }) => <TorrentRowAction row={row} sendToQbittorrent={sendToQbittorrent} />,
 			},
 		],
-		[sendToQbittorrent, sendStatuses]
+		[sendToQbittorrent]
 	);
 
 	const columnsGlobal = useMemo<GridColDef<GetTorrentGroupedResult>[]>(
@@ -186,7 +186,7 @@ export function Torrent() {
 				renderCell: ({ row }) => <TorrentGroupAction row={row} onClick={sendGroupToQbittorrent} onIconButtonClick={onIconButtonClick} />,
 			},
 		],
-		[onIconButtonClick, sendGroupToQbittorrent, sendStatuses]
+		[onIconButtonClick, sendGroupToQbittorrent]
 	);
 
 	const torrents = useMemo(() => [...results].sort((a, b) => a.template.localeCompare(b.template)), [results]);

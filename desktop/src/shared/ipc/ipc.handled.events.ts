@@ -8,6 +8,7 @@ import { RmDirOptions, Stats } from "node:fs";
 import { Encoder, FfmpegConvertOptions } from "@shared/types/ffmpeg.types";
 import type { FfprobeResult } from "@shared/types/ffprobe.types";
 import type { NyaaTorrentItem, TorrentAddResult } from "@shared/types/torrent.types";
+import type { UpdateStatus } from "@shared/types/update.types";
 import type { OidcAuthStatus, OidcProfileInput, OidcSessionTokens } from "@shared/types/auth.types";
 import type { LlmUsageStatus } from "@shared/types/llm-usage.types";
 import type { SshCommandRequest, SshCommandRun, SshDirectoryListing, SshMachine, SshMachineInput, SshTransfer } from "@shared/types/ssh.types";
@@ -114,6 +115,7 @@ export interface IpcHandledEvents {
 	 * Lance la vérification de s'il y a une mise à jour disponible
 	 */
 	"update:check": (event: IpcMainInvokeEvent) => Promise<void>;
+	"update:status:get": (event: IpcMainInvokeEvent) => UpdateStatus;
 	/**
 	 * Lance le téléchargement de la mise à jour
 	 */

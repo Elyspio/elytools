@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import "./Titlebar.scss";
-import { Fade, IconButton, Stack, Tooltip, Typography } from "@mui/material";
+import { Badge, Fade, IconButton, Stack, Tooltip, Typography } from "@mui/material";
 import FullscreenExitIcon from "@mui/icons-material/FullscreenExit";
 import FullscreenIcon from "@mui/icons-material/Fullscreen";
 import RemoveIcon from "@mui/icons-material/Remove";
@@ -10,6 +10,7 @@ import Close from "@mui/icons-material/Close";
 import Settings from "../settings/Settings";
 import { routes } from "@/config/routes.config";
 import { useLocation, useNavigate } from "react-router";
+import { useAppSelector } from "@store";
 
 interface Props {
 	title?: string;
@@ -19,6 +20,8 @@ interface Props {
 const Titlebar: React.FC<Props> = ({ title, subtitle }) => {
 	const [fullscreen, setFullscreen] = useState<boolean>();
 	const [settingModalOpened, setSettingModalOpened] = useState<boolean>(false);
+	const updateStatus = useAppSelector((state) => state.config.update);
+	const pendingUpdate = updateStatus?.state === "available" || updateStatus?.state === "downloaded" ? updateStatus : null;
 
 	useEffect(() => {
 		void window.preload.ipc.send.app.screen.isFullScreen().then(setFullscreen);
@@ -86,9 +89,14 @@ const Titlebar: React.FC<Props> = ({ title, subtitle }) => {
 					gap: 0.25,
 				}}
 			>
-				<Tooltip title={"Settings"} placement={"bottom"}>
+				<Tooltip
+					title={pendingUpdate ? `Elytools ${pendingUpdate.latestVersion} ${pendingUpdate.state === "downloaded" ? "ready to install" : "available"}` : "Settings"}
+					placement={"bottom"}
+				>
 					<IconButton className={"Titlebar__control"} onClick={toggleModal}>
-						<SettingsIcon sx={{ fontSize: 15 }} />
+						<Badge variant="dot" color="primary" invisible={!pendingUpdate}>
+							<SettingsIcon sx={{ fontSize: 15 }} />
+						</Badge>
 					</IconButton>
 				</Tooltip>
 
@@ -104,7 +112,7 @@ const Titlebar: React.FC<Props> = ({ title, subtitle }) => {
 					<Close sx={{ fontSize: 16 }} />
 				</IconButton>
 			</Stack>
-			<Settings close={toggleModal} isOpen={settingModalOpened} />
+			<Settings close={toggleModal} isOpen={settingModalOpened} initialSection={pendingUpdate ? "updates" : undefined} />
 		</Stack>
 	);
 };
