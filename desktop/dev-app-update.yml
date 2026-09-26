@@ -1,4 +1,4 @@
 provider: github
 owner: Elyspio
-repo: media-tools
+repo: elytools
 updaterCacheDirName: elytools-updater

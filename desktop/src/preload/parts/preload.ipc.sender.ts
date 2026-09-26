@@ -117,6 +117,12 @@ export function getIpcSender() {
 				return ipcRendererWrapper.invoke("update:check");
 			},
 			/**
+			 * État courant de la mise à jour automatique
+			 */
+			status() {
+				return ipcRendererWrapper.invoke("update:status:get");
+			},
+			/**
 			 * Lance le téléchargement de la mise à jour
 			 */
 			download() {
