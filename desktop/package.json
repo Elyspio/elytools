@@ -1,6 +1,6 @@
 {
 	"name": "elytools",
-	"version": "1.12.0",
+	"version": "1.12.1",
 	"description": "An Electron application with React and TypeScript",
 	"author": "jona.guich69@gmail.com",
 	"repository": {
