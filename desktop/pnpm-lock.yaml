@@ -187,6 +187,9 @@ importers:
       '@electron-toolkit/utils':
         specifier: ^4.0.0
         version: 4.0.0(electron@44.4.3(supports-color@10.2.2))
+      '@elyspio/llm-usage-collector':
+        specifier: ^0.1.0
+        version: 0.1.0
       '@emotion/react':
         specifier: ^11.14.0
         version: 11.14.0(@types/react@19.3.0)(react@19.3.0)(supports-color@10.2.2)
@@ -581,6 +584,11 @@ packages:
   '@electron/windows-sign@1.2.2':
     resolution: {integrity: sha512-dfZeox66AvdPtb2lD8OsIIQh12Tp0GNCRUDfBHIKGpbmopZto2/A8nSpYYLoedPIHpqkeblZ/k8OV0Gy7PYuyQ==}
     engines: {node: '>=14.14'}
+    hasBin: true
+
+  '@elyspio/llm-usage-collector@0.1.0':
+    resolution: {integrity: sha512-+3EGbPLEfM+EMKqsMHuhB9NqYQJF1OelfjVKHfNLCkps7w51hF6C9kzdbF5S2epzaBg0NMBa0AkyJK9U6rB6Mg==}
+    engines: {node: '>=26'}
     hasBin: true
 
   '@elyspio/vite-eslint-config@8.0.0-rc.0':
@@ -4873,6 +4881,8 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
     optional: true
+
+  '@elyspio/llm-usage-collector@0.1.0': {}
 
   '@elyspio/vite-eslint-config@8.0.0-rc.0(@babel/runtime@7.29.2)(@voidzero-dev/vite-plus-core@1.0.0-rc.0(@types/node@26.6.2)(esbuild@0.27.7)(jiti@2.6.1)(sass@1.99.0)(tsx@4.23.15)(typescript@7.0.2))(rolldown@1.0.0-rc.17)(supports-color@10.2.2)(typescript@7.0.2)(vite-plus@1.0.0-rc.0(@types/node@26.6.2)(@vitest/ui@5.0.1)(esbuild@0.27.7)(jiti@2.6.1)(sass@1.99.0)(tsx@4.23.15)(typescript@7.0.2))':
     dependencies:
