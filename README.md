@@ -1,57 +1,38 @@
 # Elytools
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
-[![Node.js](https://img.shields.io/badge/Node.js-26+-68a063?logo=node.js&logoColor=white)](https://nodejs.org/)
-[![Electron](https://img.shields.io/badge/Electron-44-47848F?logo=electron&logoColor=white)](https://www.electronjs.org/)
-[![React](https://img.shields.io/badge/React-19+-61dafb?logo=react&logoColor=black)](https://react.dev/)
-[![.NET](https://img.shields.io/badge/.NET-10.0-512bd4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
+**Media tools, development workspace cleanup, and remote machine access in one desktop application.**
 
-A comprehensive cross-platform toolbox for media workflows, system utilities, and home-lab automation.
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](desktop/LICENSE.md)
+[![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20Linux-555)](desktop/config/electron-builder.yml)
+[![Node.js](https://img.shields.io/badge/Node.js-26%2B-68a063)](desktop/package.json)
 
-## 🎯 Project Scope
+[Getting started](#getting-started) · [Desktop documentation](desktop/readme.md) · [Purge guide](desktop/src/renderer/src/view/components/internal/purge/README.md)
 
-Elytools is a personal suite designed to centralize and automate common workflows. It consists of a powerful desktop application and a supporting web infrastructure.
+Elytools brings video encoding, torrent search, project cleanup, SSH sessions, and Home Assistant access into a shared Electron interface. It is built with React and TypeScript, with Windows and Linux release targets.
 
-> **Note:** Several parts are wired to private infrastructure by default. You may need to adjust endpoints and credentials in the settings.
+## Features
 
----
+| Tool               | Capabilities                                                                                                      |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| **Encoder**        | Inspect media with FFprobe and convert video with FFmpeg.                                                         |
+| **Torrent**        | Search nyaa.si, detect existing torrents, and send downloads to a qBittorrent endpoint using OIDC authentication. |
+| **Purge**          | Scan for dependency folders and build caches, estimate their size, and remove selected categories of artifacts.   |
+| **SSH**            | Organize remote machines and work with files and commands over SSH.                                               |
+| **Home Assistant** | Open a configured Home Assistant instance inside the application.                                                 |
 
-## 🏗️ Core Components
+The application also includes named OIDC profiles, encrypted credential storage, resource monitoring, update controls, and background LLM usage reporting to a configured monitor.
 
-### 🖥️ [Desktop Application](./desktop/readme.md)
-The flagship experience: a feature-rich Electron app providing deep system integration.
+## Getting started
 
-- **Encoder**: Video conversion/probing pipeline powered by FFmpeg.
-- **Torrent**: Search on `nyaa.si` and forward to qBittorrent via OAuth2.
-- **Integrations**: Home Assistant access, OIDC login flow, auto-updates.
-- **Stack**: Electron, React, TypeScript, MUI, Inversify.
+### Requirements
 
-👉 **[View Desktop README](./desktop/readme.md)** for installation and usage.
+- **Node.js 26 or later** and **pnpm 12.5.1** for development.
+- **FFmpeg and FFprobe** available on `PATH` to use the Encoder.
+- Access to the external services you want to integrate, such as Home Assistant, SSH hosts, or an OIDC-protected qBittorrent endpoint.
 
-### 🌐 Web Infrastructure
-Supporting services and a web-based client for remote access.
+### Run locally
 
-- **Backend**: ASP.NET Core API providing weather data and SignalR screen-share hub.
-- **Frontend**: React + Vite client for remote monitoring and auth flows.
-- **Stack**: .NET 10, MongoDB, Redis, React.
-
-👉 **[Jump to Web Stack Details](#-web-stack)**
-
----
-
-## 📂 Repository Layout
-
-```text
-.
-├── desktop/    # Electron + React + TypeScript application
-
-```
-
----
-
-## 🚀 Quick Start
-
-To run the main desktop application:
+From the repository root:
 
 ```bash
 cd desktop
@@ -59,17 +40,32 @@ pnpm install
 pnpm dev
 ```
 
-*For web services, refer to the [Web Stack](#-web-stack) section below.*
+Open **Settings** to configure service endpoints and authentication profiles. Some defaults reference the maintainer's private infrastructure; replace them with your own values before using those integrations.
 
----
+See the [desktop guide](desktop/readme.md) for configuration, development commands, packaging, and release publishing.
 
-## 🔧 Desktop Configuration
+## Repository layout
 
-The app creates local configuration files under the user app-data folder:
-- **Windows**: `%LOCALAPPDATA%\elytools\config\`
-- **Linux**: `~/.config/elytools/config/`
+```text
+desktop/
+├── config/        # Electron bundling and packaging configuration
+├── deploy/        # Linux release container definition
+├── scripts/       # Build, cleanup, and publishing scripts
+├── src/
+│   ├── main/      # Electron services and IPC handlers
+│   ├── preload/   # Typed bridge between Electron and the UI
+│   ├── renderer/  # React interface, state, and services
+│   └── shared/    # Configuration models, types, and IPC contracts
+└── readme.md      # Desktop development and operations guide
+```
 
-The UI exposes settings for:
-- Home Assistant & Backend URLs
-- Screen-share hub & qBittorrent API
-- OIDC configuration (Issuer, Client ID, Scopes)
+## Documentation
+
+| Guide                                                                           | Contents                                                            |
+| ------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| [Desktop application](desktop/readme.md)                                        | Setup, architecture, configuration, authentication, and releases.   |
+| [Purge tool](desktop/src/renderer/src/view/components/internal/purge/README.md) | Cleanup presets, scanning behavior, usage, and manual verification. |
+
+## License
+
+Elytools is distributed under the [MIT License](desktop/LICENSE.md).
