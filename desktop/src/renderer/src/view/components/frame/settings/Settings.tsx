@@ -164,7 +164,8 @@ export const Settings: React.FC<OwnProps> = ({ close, isOpen, initialSection }) 
 			await saveConfig();
 			const status = await window.preload.ipc.send.llmUsage.sync();
 			setLlmUsageStatus(status);
-			if (status.lastError) toast.error(status.lastError);
+			if (status.outcome === "locked") toast.info("The standalone collector of this workstation is uploading");
+			else if (status.lastError) toast.error(status.lastError);
 			else toast.success("LLM usage uploaded");
 		} catch (error) {
 			toast.error((error as Error).message);
@@ -328,7 +329,11 @@ export const Settings: React.FC<OwnProps> = ({ close, isOpen, initialSection }) 
 										<Box className="Settings__stats">
 											<SettingsStat
 												label="Last upload"
-												value={llmUsageStatus.lastSuccessAt ? new Date(llmUsageStatus.lastSuccessAt).toLocaleString() : "Never"}
+												value={
+													llmUsageStatus.lastSuccessAt
+														? `${new Date(llmUsageStatus.lastSuccessAt).toLocaleString()}${llmUsageStatus.lastRunBy === "cli" ? " (standalone collector)" : ""}`
+														: "Never"
+												}
 											/>
 											<SettingsStat label="Session logs followed" value={llmUsageStatus.trackedFiles} />
 											<SettingsStat label="Hours waiting" value={llmUsageStatus.pendingHours} />
