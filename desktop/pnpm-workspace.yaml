@@ -33,3 +33,4 @@ minimumReleaseAgeExclude:
     - "@voidzero-dev/vite-plus-win32-arm64-msvc@1.0.0-rc.0"
     - "@voidzero-dev/vite-plus-win32-x64-msvc@1.0.0-rc.0"
     - vite-plus@1.0.0-rc.0
+    - "@elyspio/llm-usage-collector@0.1.0"

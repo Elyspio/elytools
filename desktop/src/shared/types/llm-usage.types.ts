@@ -1,15 +1,3 @@
-export type LlmProvider = "claude" | "codex";
-
-/**
- * Token counts of an hour, in the LLM Usage Monitor contract: input excludes the cached input.
- */
-export type LlmTokenCounts = {
-	input: number;
-	cacheRead: number;
-	cacheWrite: number;
-	output: number;
-};
-
 export type LlmUsageStatus = {
 	enabled: boolean;
 	running: boolean;
@@ -20,6 +8,10 @@ export type LlmUsageStatus = {
 	/** Hours changed locally and not uploaded yet. */
 	pendingHours: number;
 	lastRunAt: string | null;
+	/** `elytools`, or `cli` when the standalone collector of this workstation ran the last sync. */
+	lastRunBy: string | null;
 	lastSuccessAt: string | null;
 	lastError: string | null;
+	/** Result of the sync just requested; `locked` when another collector of this workstation was running one. */
+	outcome?: "uploaded" | "locked" | "failed";
 };
