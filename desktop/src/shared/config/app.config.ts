@@ -24,9 +24,9 @@ export type SshConfiguration = {
 	folders: SshFolderConfiguration[];
 };
 
-export type LocalConfig = LocalConfigV1 | LocalConfigV2 | LocalConfigV3 | LocalConfigV4 | LocalConfigV5 | LocalConfigV6;
+export type LocalConfig = LocalConfigV1 | LocalConfigV2 | LocalConfigV3 | LocalConfigV4 | LocalConfigV5 | LocalConfigV6 | LocalConfigV7;
 
-export type LatestConfig = LocalConfigV6;
+export type LatestConfig = LocalConfigV7;
 
 export type PositionWindowKey = "main";
 
@@ -81,6 +81,11 @@ export type LlmUsageConfiguration = {
 
 export type QBittorrentConfiguration = {
 	apiBaseUrl: string;
+};
+
+export type TorrentConfiguration = {
+	/** Folder chosen for the last download of .torrent files, proposed again by the next one */
+	lastDownloadFolder: string | null;
 };
 
 export enum AppBoardShow {
@@ -139,6 +144,11 @@ export type LocalConfigV6 = Omit<LocalConfigV5, "version" | "endpoints" | "llmUs
 		qbittorrent: QBittorrentConfiguration & { authProfileId: string | null };
 	};
 	llmUsage: LlmUsageConfiguration & { authProfileId: string | null };
+};
+
+export type LocalConfigV7 = Omit<LocalConfigV6, "version"> & {
+	version: 7;
+	torrent: TorrentConfiguration;
 };
 
 export type WindowPosition = Pick<BrowserWindowConstructorOptions, "x" | "y" | "width" | "height">;

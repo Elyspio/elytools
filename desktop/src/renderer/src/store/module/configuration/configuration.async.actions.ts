@@ -3,7 +3,7 @@ import { createAsyncActionGenerator, getServices } from "../../utils/utils.actio
 import { addProcessStd, completeProcess } from "@modules/process/process.actions";
 import { LatestConfig } from "@shared/config/app.config";
 import { SystemService } from "@services/system/system.service";
-import { setSystemInformation, setUpdateStatus } from "@modules/configuration/configuration.actions";
+import { setAuthStatuses, setSystemInformation, setUpdateStatus } from "@modules/configuration/configuration.actions";
 import { initSsh } from "@modules/ssh/ssh.async.actions";
 
 const createAsyncThunk = createAsyncActionGenerator("configuration");
@@ -21,6 +21,13 @@ export const reloadConfig = createAsyncThunk("reload", async (_, { extra }) => {
 	const services = getServices({ config: ConfigurationService }, extra);
 
 	return await services.config.get();
+});
+
+/**
+ * Reloads the session state of the OIDC profiles (e.g. after a sign in or sign out)
+ */
+export const refreshAuthStatuses = createAsyncThunk("auth-statuses/refresh", async (_, { dispatch }) => {
+	dispatch(setAuthStatuses(await window.preload.ipc.send.auth.oidc.statuses()));
 });
 
 export const regenerateConfig = createAsyncThunk("regenerate", async (_, { extra }) => {
@@ -88,6 +95,9 @@ export const initApp = createAsyncThunk("init-app", async (_, { dispatch }) => {
 
 	window.preload.ipc.on.update.status((status) => dispatch(setUpdateStatus(status)));
 	dispatch(setUpdateStatus(await window.preload.ipc.send.update.status()));
+
+	window.preload.ipc.on.auth.oidc.status((statuses) => dispatch(setAuthStatuses(statuses)));
+	void dispatch(refreshAuthStatuses());
 
 	window.preload.ipc.on.process.spawn.exit((pid, code) => {
 		dispatch(completeProcess({ pid, exitStatus: code ?? -1 }));

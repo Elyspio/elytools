@@ -66,3 +66,15 @@
 		background-color: #e81123;
 	}
 }
+
+.Titlebar__auth-alert {
+	&--expired,
+	&--expired:hover {
+		color: #ff5c7a;
+	}
+
+	&--unreachable,
+	&--unreachable:hover {
+		color: #ffb547;
+	}
+}

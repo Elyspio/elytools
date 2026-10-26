@@ -137,8 +137,13 @@
 		box-shadow: 0 0 6px rgba(0, 255, 136, 0.5);
 	}
 
-	&--signed-out {
+	&--signed-out,
+	&--unreachable {
 		color: var(--auth-warn);
+	}
+
+	&--expired {
+		color: var(--auth-danger);
 	}
 
 	&--not-configured {
@@ -172,10 +177,17 @@
 		}
 	}
 
-	&--signed-out {
+	&--signed-out,
+	&--unreachable {
 		color: var(--auth-warn);
 		background-color: rgba(255, 181, 71, 0.07);
 		border-color: rgba(255, 181, 71, 0.2);
+	}
+
+	&--expired {
+		color: var(--auth-danger);
+		background-color: rgba(255, 92, 122, 0.07);
+		border-color: rgba(255, 92, 122, 0.25);
 	}
 
 	&--not-configured {

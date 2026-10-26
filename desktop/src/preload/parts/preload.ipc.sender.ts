@@ -8,7 +8,7 @@ import { ExecResult, SpawnResult } from "@shared/types/process.types";
 import { RmDirOptions } from "fs";
 import { Stats } from "node:fs";
 import { FfmpegConvertOptions } from "@shared/types/ffmpeg.types";
-import { NyaaTorrentItem, TorrentAddResult } from "@shared/types/torrent.types";
+import { NyaaTorrentItem, TorrentAddResult, TorrentDownloadResult } from "@shared/types/torrent.types";
 import { OidcAuthStatus, OidcProfileInput, OidcSessionTokens } from "@shared/types/auth.types";
 import { LlmUsageStatus } from "@shared/types/llm-usage.types";
 import { SelectPathsOptions } from "@shared/types/dialog.types";
@@ -247,6 +247,11 @@ export function getIpcSender() {
 			nyaa: {
 				list: async (query: string): Promise<NyaaTorrentItem[]> => {
 					return await ipcRendererWrapper.invoke("torrent:nyaa:list", query);
+				},
+			},
+			files: {
+				download: async (items: Pick<NyaaTorrentItem, "title" | "torrentUrl">[]): Promise<TorrentDownloadResult> => {
+					return await ipcRendererWrapper.invoke("torrent:files:download", items);
 				},
 			},
 		},

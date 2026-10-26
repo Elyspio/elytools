@@ -13,13 +13,17 @@ type SecretsFilePayload = Partial<Record<SecretKey, string>>;
 
 @injectable()
 export class SecureStorageModule {
+	/** Writes of the secrets file, chained: each one reads, modifies and writes the whole file */
+	private mutations: Promise<void> = Promise.resolve();
+
 	public constructor(@inject(MainContextModule) private readonly mainContextModule: MainContextModule) {}
 
 	public async setSecret(key: SecretKey, value: string): Promise<void> {
 		this.ensureEncryptionAvailable();
-		const secrets = await this.readSecrets();
-		secrets[key] = safeStorage.encryptString(value).toString("base64");
-		await this.writeSecrets(secrets);
+		await this.mutate((secrets) => {
+			secrets[key] = safeStorage.encryptString(value).toString("base64");
+			return true;
+		});
 	}
 
 	public async getSecret(key: SecretKey): Promise<string | undefined> {
@@ -31,10 +35,11 @@ export class SecureStorageModule {
 	}
 
 	public async deleteSecret(key: SecretKey): Promise<void> {
-		const secrets = await this.readSecrets();
-		if (!secrets[key]) return;
-		delete secrets[key];
-		await this.writeSecrets(secrets);
+		await this.mutate((secrets) => {
+			if (!secrets[key]) return false;
+			delete secrets[key];
+			return true;
+		});
 	}
 
 	public async setMachinePassword(machineId: string, password: string): Promise<void> {
@@ -81,6 +86,22 @@ export class SecureStorageModule {
 
 	private get secretsFilePath() {
 		return path.resolve(this.mainContextModule.appFolder, "config", "secrets.json");
+	}
+
+	/**
+	 * Applies a change to the secrets file after the previous ones, so concurrent changes do not overwrite each other
+	 * @param change returns false when the file is left unchanged
+	 */
+	private async mutate(change: (secrets: SecretsFilePayload) => boolean): Promise<void> {
+		const mutation = this.mutations.then(async () => {
+			const secrets = await this.readSecrets();
+			if (change(secrets)) {
+				await this.writeSecrets(secrets);
+			}
+		});
+		// A failed change must not block the next ones
+		this.mutations = mutation.catch(() => undefined);
+		await mutation;
 	}
 
 	private async readSecrets(): Promise<SecretsFilePayload> {

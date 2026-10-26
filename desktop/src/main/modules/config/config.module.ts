@@ -3,7 +3,7 @@ import path from "path";
 import * as fs from "node:fs";
 import type { LatestConfig, LocalConfig } from "@shared/config/app.config";
 import { MainContextModule } from "../context/main.context.module";
-import { ConfigMigrationModule, defaultAuthConfiguration, defaultLlmUsageConfiguration } from "./config.migration.module";
+import { ConfigMigrationModule, defaultAuthConfiguration, defaultLlmUsageConfiguration, defaultTorrentConfiguration } from "./config.migration.module";
 import { SecureStorageModule } from "../security/secure-storage.module";
 import { log } from "../../utils/logs.utils";
 import { inject, injectable } from "inversify";
@@ -103,7 +103,7 @@ export class ConfigModule extends LogModule {
 	@log.debug()
 	private async getDefaultConfig(): Promise<LatestConfig> {
 		return {
-			version: 6,
+			version: 7,
 			windows: { position: {} },
 			appboard: { show: [] },
 			frame: {
@@ -132,6 +132,7 @@ export class ConfigModule extends LogModule {
 				folders: [],
 			},
 			llmUsage: defaultLlmUsageConfiguration(),
+			torrent: defaultTorrentConfiguration(),
 		};
 	}
 }

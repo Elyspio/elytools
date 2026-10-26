@@ -10,6 +10,19 @@ export type NyaaTorrentItem = {
 	category?: string;
 };
 
+/**
+ * Outcome of the download of the .torrent files of a group
+ */
+export type TorrentDownloadResult = {
+	/** The user closed the folder picker */
+	canceled: boolean;
+	folder: string | null;
+	downloaded: number;
+	/** Magnet links written to magnets.txt */
+	magnets: number;
+	failures: { title: string; error: string }[];
+};
+
 export type TorrentAddResult = {
 	success: boolean;
 	duplicate?: boolean;

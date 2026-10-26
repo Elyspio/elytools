@@ -4,7 +4,7 @@ import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import { toast } from "react-toastify";
 import { NyaaTorrentItem } from "@shared/types/torrent.types";
 import { store, useAppDispatch, useAppSelector } from "@store";
-import { searchTorrents, sendTorrent, sendTorrentGroup } from "@modules/torrent/torrent.async.actions";
+import { downloadTorrentGroupFiles, searchTorrents, sendTorrent, sendTorrentGroup } from "@modules/torrent/torrent.async.actions";
 import { torrentActions } from "@modules/torrent/torrent.reducer";
 import dayjs from "dayjs";
 import { SearchOutlined } from "@mui/icons-material";
@@ -13,12 +13,20 @@ import { useModal } from "@hooks/useModal";
 import "./Torrent.scss";
 import { TorrentRowAction } from "./cells/TorrentRowAction";
 import { TorrentGroupAction } from "./cells/TorrentGroupAction";
+import { TorrentSetupAlert } from "./TorrentSetupAlert";
 
 const resolutions = ["720p", "1080p", "2160p", "4K", "8K"] as const;
 
 type Resolution = (typeof resolutions)[number];
 
 const CLEAR_DELAY = 3000;
+
+/**
+ * Message of an error thrown by the main process, without the « Error invoking remote method » prefix of Electron
+ */
+function ipcErrorMessage(error: Error) {
+	return error.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, "");
+}
 
 export function Torrent() {
 	const dispatch = useAppDispatch();
@@ -64,6 +72,7 @@ export function Torrent() {
 			if (!row.torrentUrl) return;
 			void dispatch(sendTorrent(row))
 				.unwrap()
+				.catch((error: Error) => toast.error(ipcErrorMessage(error)))
 				.finally(() => clearNonDuplicateStatus(row.id));
 		},
 		[clearNonDuplicateStatus, dispatch]
@@ -74,6 +83,7 @@ export function Torrent() {
 			e.stopPropagation();
 			void dispatch(sendTorrentGroup(group))
 				.unwrap()
+				.catch((error: Error) => toast.error(ipcErrorMessage(error)))
 				.finally(() => {
 					for (const item of group.data) {
 						clearNonDuplicateStatus(item.id);
@@ -81,6 +91,37 @@ export function Torrent() {
 				});
 		},
 		[clearNonDuplicateStatus, dispatch]
+	);
+
+	const [downloadingGroups, setDownloadingGroups] = useState<ReadonlySet<string>>(new Set());
+
+	const downloadGroupFiles = useCallback(
+		(group: GetTorrentGroupedResult, e: React.MouseEvent) => {
+			e.stopPropagation();
+			setDownloadingGroups((prev) => new Set(prev).add(group.template));
+			void dispatch(downloadTorrentGroupFiles(group))
+				.unwrap()
+				.then((result) => {
+					if (result.canceled) return;
+					const parts = [`${result.downloaded} .torrent downloaded`];
+					if (result.magnets > 0) parts.push(`${result.magnets} magnet${result.magnets > 1 ? "s" : ""} in magnets.txt`);
+					if (result.failures.length > 0) {
+						parts.push(`${result.failures.length} failed (${result.failures[0].error})`);
+						toast.warning(parts.join(", "));
+					} else {
+						toast.success(parts.join(", "));
+					}
+				})
+				.catch((error: Error) => toast.error(ipcErrorMessage(error)))
+				.finally(() =>
+					setDownloadingGroups((prev) => {
+						const next = new Set(prev);
+						next.delete(group.template);
+						return next;
+					})
+				);
+		},
+		[dispatch]
 	);
 
 	const [selectedGroup, setSelectedGroup] = useState<GetTorrentGroupedResult>();
@@ -180,19 +221,28 @@ export function Torrent() {
 			{
 				field: "actions",
 				headerName: "",
-				width: 80,
+				width: 110,
 				sortable: false,
 				disableColumnMenu: true,
-				renderCell: ({ row }) => <TorrentGroupAction row={row} onClick={sendGroupToQbittorrent} onIconButtonClick={onIconButtonClick} />,
+				renderCell: ({ row }) => (
+					<TorrentGroupAction
+						row={row}
+						onClick={sendGroupToQbittorrent}
+						onIconButtonClick={onIconButtonClick}
+						onDownloadFiles={downloadGroupFiles}
+						isDownloadingFiles={downloadingGroups.has(row.template)}
+					/>
+				),
 			},
 		],
-		[onIconButtonClick, sendGroupToQbittorrent]
+		[downloadGroupFiles, downloadingGroups, onIconButtonClick, sendGroupToQbittorrent]
 	);
 
 	const torrents = useMemo(() => [...results].sort((a, b) => a.template.localeCompare(b.template)), [results]);
 
 	return (
 		<Stack className={"Torrent"}>
+			<TorrentSetupAlert />
 			<Box className={"Torrent__search"}>
 				<form onSubmit={search}>
 					<Stack spacing={1}>

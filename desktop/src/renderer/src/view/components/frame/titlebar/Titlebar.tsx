@@ -7,10 +7,13 @@ import RemoveIcon from "@mui/icons-material/Remove";
 import SettingsIcon from "@mui/icons-material/Settings";
 import NavigateBefore from "@mui/icons-material/NavigateBefore";
 import Close from "@mui/icons-material/Close";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import Settings from "../settings/Settings";
 import { routes } from "@/config/routes.config";
 import { useLocation, useNavigate } from "react-router";
-import { useAppSelector } from "@store";
+import { useAppDispatch, useAppSelector } from "@store";
+import { closeSettings, openSettings } from "@modules/configuration/configuration.actions";
+import { sessionLabels, sessionState } from "../settings/AuthenticationSettings";
 
 interface Props {
 	title?: string;
@@ -19,16 +22,22 @@ interface Props {
 
 const Titlebar: React.FC<Props> = ({ title, subtitle }) => {
 	const [fullscreen, setFullscreen] = useState<boolean>();
-	const [settingModalOpened, setSettingModalOpened] = useState<boolean>(false);
+	const dispatch = useAppDispatch();
+	const settings = useAppSelector((state) => state.config.settings);
 	const updateStatus = useAppSelector((state) => state.config.update);
 	const pendingUpdate = updateStatus?.state === "available" || updateStatus?.state === "downloaded" ? updateStatus : null;
+	const profiles = useAppSelector((state) => state.config.current.auth?.profiles);
+	const authStatuses = useAppSelector((state) => state.config.authStatuses);
+	const failingProfiles = (profiles ?? [])
+		.map((profile) => ({ profile, state: sessionState(authStatuses.find((status) => status.profileId === profile.id)) }))
+		.filter(({ state }) => state === "expired" || state === "unreachable");
 
 	useEffect(() => {
 		void window.preload.ipc.send.app.screen.isFullScreen().then(setFullscreen);
 	}, []);
 
 	const toggleModal = () => {
-		setSettingModalOpened((prev) => !prev);
+		dispatch(settings.open ? closeSettings() : openSettings(pendingUpdate ? "updates" : undefined));
 	};
 
 	const close = () => {
@@ -89,6 +98,17 @@ const Titlebar: React.FC<Props> = ({ title, subtitle }) => {
 					gap: 0.25,
 				}}
 			>
+				{failingProfiles.length > 0 && (
+					<Tooltip title={failingProfiles.map(({ profile, state }) => `${profile.name}: ${sessionLabels[state]}`).join(" · ")} placement={"bottom"}>
+						<IconButton
+							className={`Titlebar__control Titlebar__auth-alert Titlebar__auth-alert--${failingProfiles.some(({ state }) => state === "expired") ? "expired" : "unreachable"}`}
+							onClick={() => dispatch(openSettings("authentication"))}
+						>
+							<WarningAmberIcon sx={{ fontSize: 15 }} />
+						</IconButton>
+					</Tooltip>
+				)}
+
 				<Tooltip
 					title={pendingUpdate ? `Elytools ${pendingUpdate.latestVersion} ${pendingUpdate.state === "downloaded" ? "ready to install" : "available"}` : "Settings"}
 					placement={"bottom"}
@@ -112,7 +132,7 @@ const Titlebar: React.FC<Props> = ({ title, subtitle }) => {
 					<Close sx={{ fontSize: 16 }} />
 				</IconButton>
 			</Stack>
-			<Settings close={toggleModal} isOpen={settingModalOpened} initialSection={pendingUpdate ? "updates" : undefined} />
+			<Settings close={() => dispatch(closeSettings())} isOpen={settings.open} initialSection={settings.section} />
 		</Stack>
 	);
 };

@@ -1,7 +1,7 @@
 import { Box, Button, Dialog, DialogActions, DialogContent, Stack, Typography } from "@mui/material";
 import React, { useCallback, useEffect, useState } from "react";
 import "./Settings.scss";
-import { reloadConfig, setConfig } from "@modules/configuration/configuration.async.actions";
+import { refreshAuthStatuses as refreshAuthStatusesAction, reloadConfig, setConfig } from "@modules/configuration/configuration.async.actions";
 import { useAppDispatch, useAppSelector } from "@store";
 import { LatestConfig } from "@shared/config/app.config";
 import { toast } from "react-toastify";
@@ -12,7 +12,6 @@ import InsightsIcon from "@mui/icons-material/Insights";
 import VpnKeyIcon from "@mui/icons-material/VpnKey";
 import SystemUpdateAltIcon from "@mui/icons-material/SystemUpdateAlt";
 import type { LlmUsageStatus } from "@shared/types/llm-usage.types";
-import type { OidcAuthStatus } from "@shared/types/auth.types";
 import { AuthenticationSettings, AuthProfilePicker } from "./AuthenticationSettings";
 import { UpdatesSettings } from "./UpdatesSettings";
 import { SettingsCard, SettingsField, SettingsGrid, SettingsInput, SettingsSection, SettingsStat, SettingsToggle } from "./SettingsControls";
@@ -41,20 +40,20 @@ export const Settings: React.FC<OwnProps> = ({ close, isOpen, initialSection }) 
 	const updateStatus = useAppSelector((state) => state.config.update);
 	const dispatch = useAppDispatch();
 	const [draftConfig, setDraftConfig] = useState<LatestConfig | null>(null);
-	const [authStatuses, setAuthStatuses] = useState<OidcAuthStatus[]>([]);
+	const authStatuses = useAppSelector((state) => state.config.authStatuses);
 	const [activeSection, setActiveSection] = useState<Section>("endpoints");
 	const [llmUsageStatus, setLlmUsageStatus] = useState<LlmUsageStatus | null>(null);
 	const [isSyncing, setIsSyncing] = useState(false);
 
 	const refreshAuthStatuses = useCallback(async () => {
-		setAuthStatuses(await window.preload.ipc.send.auth.oidc.statuses());
-	}, []);
+		await dispatch(refreshAuthStatusesAction()).unwrap();
+	}, [dispatch]);
 
 	useEffect(() => {
 		if (!isOpen) return;
-		void window.preload.ipc.send.auth.oidc.statuses().then(setAuthStatuses);
+		void dispatch(refreshAuthStatusesAction());
 		void window.preload.ipc.send.llmUsage.status().then(setLlmUsageStatus);
-	}, [isOpen]);
+	}, [dispatch, isOpen]);
 
 	// Take the draft from the store when the dialog opens (adjusting state during render instead of in an effect).
 	// Later store changes (auth profiles) are merged into the draft by hand, so the unsaved edits survive.
