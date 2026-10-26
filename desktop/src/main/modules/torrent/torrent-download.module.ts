@@ -9,8 +9,9 @@ import { log } from "@main/utils/logs.utils";
 import type { NyaaTorrentItem, TorrentDownloadResult } from "@shared/types/torrent.types";
 
 const MAGNETS_FILE = "magnets.txt";
-/** Below the 255 characters of most file systems, the extension included */
-const MAX_FILE_NAME_LENGTH = 200;
+const EXTENSION = ".torrent";
+/** UTF-8 bytes of the name without extension: file systems limit a name to 255 bytes, room is kept for the extension and a « (n) » suffix */
+const MAX_FILE_NAME_BYTES = 230;
 
 /**
  * Writes the .torrent files of a group of torrents (the episodes of a season) to a folder chosen by the user
@@ -39,13 +40,15 @@ export class TorrentDownloadModule extends LogModule {
 		const failures: TorrentDownloadResult["failures"] = [];
 
 		// One at a time: nyaa.si rate limits the downloads
+		const usedNames = new Set<string>();
 		for (const item of files) {
+			const fileName = this.uniqueFileName(this.toFileName(item.title), usedNames);
 			try {
 				const res = await fetch(item.torrentUrl);
 				if (!res.ok) {
 					throw new Error(`HTTP ${res.status}`);
 				}
-				await fs.promises.writeFile(path.join(folder, `${this.toFileName(item.title)}.torrent`), new Uint8Array(await res.arrayBuffer()));
+				await fs.promises.writeFile(path.join(folder, fileName), new Uint8Array(await res.arrayBuffer()));
 			} catch (error) {
 				this.logger.error("Failed to download torrent file", { title: item.title, url: item.torrentUrl, error });
 				failures.push({ title: item.title, error: (error as Error).message });
@@ -89,15 +92,36 @@ export class TorrentDownloadModule extends LogModule {
 	}
 
 	/**
-	 * Title usable as a file name on Windows and Linux
+	 * Title usable as a file name on Windows and Linux, without extension
 	 */
 	private toFileName(title: string): string {
-		const name = title
+		const sanitized = title
 			// eslint-disable-next-line no-control-regex
 			.replace(/[<>:"/\\|?*\u0000-\u001f]/g, "_")
-			.replace(/[. ]+$/, "")
-			.trim()
-			.slice(0, MAX_FILE_NAME_LENGTH);
-		return name || "torrent";
+			.trim();
+
+		// Cut on code points, so a character never ends split in half
+		let name = "";
+		let bytes = 0;
+		for (const char of sanitized) {
+			bytes += Buffer.byteLength(char, "utf-8");
+			if (bytes > MAX_FILE_NAME_BYTES) break;
+			name += char;
+		}
+
+		// Windows drops the trailing dots and spaces
+		return name.replace(/[. ]+$/, "") || "torrent";
+	}
+
+	/**
+	 * Name not given yet to another file of the batch (case-insensitive, as on Windows): « name (2).torrent » otherwise
+	 */
+	private uniqueFileName(name: string, usedNames: Set<string>): string {
+		let candidate = `${name}${EXTENSION}`;
+		for (let index = 2; usedNames.has(candidate.toLowerCase()); index++) {
+			candidate = `${name} (${index})${EXTENSION}`;
+		}
+		usedNames.add(candidate.toLowerCase());
+		return candidate;
 	}
 }

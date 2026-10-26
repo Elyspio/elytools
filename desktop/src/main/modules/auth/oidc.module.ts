@@ -67,6 +67,8 @@ export class OidcModule extends LogModule {
 	/** Refresh in progress per profile: concurrent callers share it instead of sending the same refresh token N times */
 	private readonly refreshes = new Map<string, Promise<OidcSession>>();
 	private readonly health = new Map<string, OidcHealthEntry>();
+	/** Incremented by every sign out: a refresh started before it must not bring the session back */
+	private readonly generations = new Map<string, number>();
 	private healthCheckTimer?: ReturnType<typeof setInterval>;
 
 	public constructor(
@@ -237,6 +239,8 @@ export class OidcModule extends LogModule {
 	}
 
 	public async logout(profileId: string): Promise<void> {
+		this.generations.set(profileId, this.generation(profileId) + 1);
+		this.refreshes.delete(profileId);
 		this.sessions.delete(profileId);
 		this.health.delete(profileId);
 		await this.secureStorageModule.deleteSecret(this.refreshTokenKey(profileId));
@@ -250,7 +254,7 @@ export class OidcModule extends LogModule {
 				const hasRefreshToken = !!(await this.secureStorageModule.getSecret(this.refreshTokenKey(profile.id)));
 				const configured = !!profile.issuerUrl && !!profile.clientId;
 				const entry = this.health.get(profile.id);
-				const health = this.toHealth(configured, hasRefreshToken, entry);
+				const health = this.toHealth(configured, hasRefreshToken || this.isSessionValid(profile.id), entry);
 				return {
 					profileId: profile.id,
 					configured,
@@ -354,16 +358,21 @@ export class OidcModule extends LogModule {
 			return await inFlight;
 		}
 
-		const refresh = this.refreshWithStoredToken(profile, requester).finally(() => this.refreshes.delete(profile.id));
+		const refresh = this.refreshWithStoredToken(profile, requester).finally(() => {
+			// A sign out may have dropped this refresh, and a newer one taken its place
+			if (this.refreshes.get(profile.id) === refresh) this.refreshes.delete(profile.id);
+		});
 		this.refreshes.set(profile.id, refresh);
 		return await refresh;
 	}
 
 	private async refreshWithStoredToken(profile: OidcProfile, requester: string): Promise<OidcSession> {
+		const generation = this.generation(profile.id);
 		const refreshToken = await this.secureStorageModule.getSecret(this.refreshTokenKey(profile.id));
 		if (!refreshToken) {
 			throw new Error(`Not authenticated on profile ${profile.name} (${requester}). Please sign in first.`);
 		}
+		const signedOutMeanwhile = () => new Error(`Profile ${profile.name} was signed out during the refresh (${requester})`);
 
 		let res: Response;
 		try {
@@ -383,6 +392,10 @@ export class OidcModule extends LogModule {
 			const reason = (error as Error).message;
 			this.setHealth(profile.id, "unreachable", reason);
 			throw new Error(`OIDC provider of profile ${profile.name} is unreachable (${requester}): ${reason}`);
+		}
+
+		if (this.generation(profile.id) !== generation) {
+			throw signedOutMeanwhile();
 		}
 
 		if (!res.ok) {
@@ -408,9 +421,16 @@ export class OidcModule extends LogModule {
 		}
 
 		const tokens = (await res.json()) as OidcTokenResponse;
+		if (this.generation(profile.id) !== generation) {
+			throw signedOutMeanwhile();
+		}
 		const session = await this.applyTokenResponse(profile.id, tokens);
 		this.setHealth(profile.id, "valid", null);
 		return session;
+	}
+
+	private generation(profileId: string): number {
+		return this.generations.get(profileId) ?? 0;
 	}
 
 	private parseErrorResponse(body: string): OidcErrorResponse {
@@ -421,9 +441,12 @@ export class OidcModule extends LogModule {
 		}
 	}
 
-	private toHealth(configured: boolean, hasRefreshToken: boolean, entry: OidcHealthEntry | undefined): OidcSessionHealth {
+	/**
+	 * @param hasSession a refresh token is stored, or the access token of a provider without refresh token is still valid
+	 */
+	private toHealth(configured: boolean, hasSession: boolean, entry: OidcHealthEntry | undefined): OidcSessionHealth {
 		if (!configured) return "not-configured";
-		if (!hasRefreshToken) return entry?.health === "expired" ? "expired" : "signed-out";
+		if (!hasSession) return entry?.health === "expired" ? "expired" : "signed-out";
 		if (!entry || entry.health === "expired") return "unchecked";
 		return entry.health;
 	}
