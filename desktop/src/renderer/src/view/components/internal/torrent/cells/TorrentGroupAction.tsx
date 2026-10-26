@@ -2,7 +2,7 @@ import { useAppSelector } from "@store";
 import { getGroupColor } from "@components/internal/torrent/torrent.utils";
 import { IconButton, Stack, Tooltip } from "@mui/material";
 import CloudDownloadIcon from "@mui/icons-material/CloudDownload";
-import { SearchOutlined } from "@mui/icons-material";
+import { Download, SearchOutlined } from "@mui/icons-material";
 import React from "react";
 import type { GetTorrentGroupedResult } from "@modules/torrent/torrent.types";
 
@@ -10,9 +10,11 @@ type TorrentGroupActionProps = {
 	row: GetTorrentGroupedResult;
 	onClick: (row: GetTorrentGroupedResult, e: React.MouseEvent) => void;
 	onIconButtonClick: (row: GetTorrentGroupedResult) => void;
+	onDownloadFiles: (row: GetTorrentGroupedResult, e: React.MouseEvent) => void;
+	isDownloadingFiles: boolean;
 };
 
-export function TorrentGroupAction({ row, onClick, onIconButtonClick }: TorrentGroupActionProps) {
+export function TorrentGroupAction({ row, onClick, onIconButtonClick, onDownloadFiles, isDownloadingFiles }: TorrentGroupActionProps) {
 	const sendStatuses = useAppSelector((s) => s.torrent.sendStatuses);
 	const groupColor = getGroupColor(row, sendStatuses);
 	const isSending = row.data.some((d) => sendStatuses[d.id] === "sending");
@@ -34,6 +36,13 @@ export function TorrentGroupAction({ row, onClick, onIconButtonClick }: TorrentG
 				height: "100%",
 			}}
 		>
+			<Tooltip title={isDownloadingFiles ? "Downloading..." : `Download the ${row.data.length} .torrent files`}>
+				<span>
+					<IconButton size="small" disabled={isDownloadingFiles} onClick={(e) => onDownloadFiles(row, e)}>
+						<Download sx={{ fontSize: 16 }} />
+					</IconButton>
+				</span>
+			</Tooltip>
 			<Tooltip title={groupTooltip}>
 				<IconButton size="small" color={groupColor} disabled={isSending} onClick={(e) => onClick(row, e)}>
 					<CloudDownloadIcon sx={{ fontSize: 16 }} />

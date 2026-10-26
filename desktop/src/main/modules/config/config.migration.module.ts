@@ -11,6 +11,8 @@ import type {
 	LocalConfigV3,
 	LocalConfigV4,
 	LocalConfigV5,
+	LocalConfigV6,
+	TorrentConfiguration,
 } from "@shared/config/app.config";
 import { log } from "../../utils/logs.utils";
 
@@ -28,6 +30,12 @@ export function defaultAuthConfiguration(): AuthConfiguration {
 	return {
 		redirectPath: "auth/callback",
 		profiles: [],
+	};
+}
+
+export function defaultTorrentConfiguration(): TorrentConfiguration {
+	return {
+		lastDownloadFolder: null,
 	};
 }
 
@@ -54,6 +62,27 @@ export class ConfigMigrationModule extends LogModule {
 	@log.debug()
 	public async migrate(conf: LocalConfig): Promise<LatestConfig> {
 		this.logger.info("Starting migration of local config");
+		if (configGuards.is.v7(conf)) {
+			return conf;
+		}
+
+		return {
+			...this.toV6(conf),
+			version: 7,
+			torrent: defaultTorrentConfiguration(),
+		};
+	}
+
+	/**
+	 * Indique si la configuration locale nécessite une migration
+	 * @param conf
+	 */
+	@log.debug((conf: LocalConfig) => `version=${conf.version}`)
+	public requireMigration(conf: LocalConfig): conf is LocalConfigV1 | LocalConfigV2 | LocalConfigV3 | LocalConfigV4 | LocalConfigV5 | LocalConfigV6 {
+		return !configGuards.is.v7(conf);
+	}
+
+	private toV6(conf: LocalConfigV1 | LocalConfigV2 | LocalConfigV3 | LocalConfigV4 | LocalConfigV5 | LocalConfigV6): LocalConfigV6 {
 		if (configGuards.is.v6(conf)) {
 			return conf;
 		}
@@ -73,15 +102,6 @@ export class ConfigMigrationModule extends LogModule {
 			},
 			llmUsage: { ...v5.llmUsage, authProfileId: null },
 		};
-	}
-
-	/**
-	 * Indique si la configuration locale nécessite une migration
-	 * @param conf
-	 */
-	@log.debug((conf: LocalConfig) => `version=${conf.version}`)
-	public requireMigration(conf: LocalConfig): conf is LocalConfigV1 | LocalConfigV2 | LocalConfigV3 | LocalConfigV4 | LocalConfigV5 {
-		return !configGuards.is.v6(conf);
 	}
 
 	private toV5(conf: LocalConfigV1 | LocalConfigV2 | LocalConfigV3 | LocalConfigV4 | LocalConfigV5): LocalConfigV5 {

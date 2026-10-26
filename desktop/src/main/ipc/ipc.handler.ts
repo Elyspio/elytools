@@ -17,6 +17,7 @@ import path from "node:path";
 import os from "os";
 import { NyaaModule } from "@main/modules/torrent/nyaa.module";
 import { QBittorrentModule } from "@main/modules/torrent/qbittorrent.module";
+import { TorrentDownloadModule } from "@main/modules/torrent/torrent-download.module";
 import { OidcModule } from "@main/modules/auth/oidc.module";
 import { SshModule } from "@main/modules/ssh/ssh.module";
 import { LlmUsageModule } from "@main/modules/llm-usage/llm-usage.module";
@@ -136,9 +137,9 @@ const ipcHandlers: IpcHandledEvents = {
 		return mainContainer.get(ConfigModule).regenerateConfig();
 	},
 	async "config:local:set"(_, config) {
-		// Profiles are owned by OidcModule (auth:profile:*): a Settings draft must not bring back a stale list.
-		const { auth } = await mainContainer.get(ConfigModule).getConfig();
-		await mainContainer.get(ConfigModule).writeConfig({ ...config, auth: { ...config.auth, profiles: auth.profiles } });
+		// Profiles are owned by OidcModule (auth:profile:*) and the download folder by TorrentDownloadModule: a Settings draft must not bring back stale values.
+		const { auth, torrent } = await mainContainer.get(ConfigModule).getConfig();
+		await mainContainer.get(ConfigModule).writeConfig({ ...config, auth: { ...config.auth, profiles: auth.profiles }, torrent });
 	},
 	async "dialog:selectDirectory"(_, returnFiles) {
 		return mainContainer.get(FileModule).getFolder({ returnFiles });
@@ -229,6 +230,9 @@ const ipcHandlers: IpcHandledEvents = {
 	},
 	async "torrent:qbittorrent:get-hashes"() {
 		return await mainContainer.get(QBittorrentModule).getExistingHashes();
+	},
+	async "torrent:files:download"(_, items) {
+		return await mainContainer.get(TorrentDownloadModule).downloadFiles(items);
 	},
 	async "auth:profile:save"(_, input) {
 		return await mainContainer.get(OidcModule).saveProfile(input);

@@ -1,5 +1,5 @@
 import { injectable } from "inversify";
-import type { TorrentAddResult } from "@shared/types/torrent.types";
+import type { NyaaTorrentItem, TorrentAddResult, TorrentDownloadResult } from "@shared/types/torrent.types";
 
 @injectable()
 export class TorrentService {
@@ -9,6 +9,13 @@ export class TorrentService {
 
 	async getExistingHashes(): Promise<string[]> {
 		return await window.preload.ipc.send.torrent.qbittorrent.getExistingHashes();
+	}
+
+	/**
+	 * Asks for a folder, then writes the .torrent files of the items in it (the magnet links go to magnets.txt)
+	 */
+	async downloadFiles(items: NyaaTorrentItem[]): Promise<TorrentDownloadResult> {
+		return await window.preload.ipc.send.torrent.files.download(items.map(({ title, torrentUrl }) => ({ title, torrentUrl })));
 	}
 
 	/**

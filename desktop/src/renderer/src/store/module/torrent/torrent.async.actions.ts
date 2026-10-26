@@ -121,3 +121,12 @@ export const sendTorrentGroup = createAsyncThunk("sendGroup", async (group: GetT
 
 	return group.template;
 });
+
+/**
+ * Downloads the .torrent files of every episode of the group to a folder chosen by the user
+ */
+export const downloadTorrentGroupFiles = createAsyncThunk("downloadGroupFiles", async (group: GetTorrentGroupedResult, { extra }) => {
+	const torrentService = getService(TorrentService, extra);
+
+	return await torrentService.downloadFiles(group.data);
+});
