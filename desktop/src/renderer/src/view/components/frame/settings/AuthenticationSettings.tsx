@@ -17,19 +17,37 @@ import { OidcSessionDialog } from "./OidcSessionDialog";
 const DEFAULT_SCOPES = "openid profile offline_access";
 const AVATAR_TONES = ["blue", "purple", "green", "orange", "pink"] as const;
 
-type SessionState = "signed-in" | "signed-out" | "not-configured";
+export type SessionState = "signed-in" | "signed-out" | "expired" | "unreachable" | "not-configured";
 
-function sessionState(status: OidcAuthStatus | undefined): SessionState {
-	if (status?.authenticated) return "signed-in";
-	if (status && !status.configured) return "not-configured";
-	return "signed-out";
+export function sessionState(status: OidcAuthStatus | undefined): SessionState {
+	switch (status?.health) {
+		case "valid":
+		case "unchecked":
+			return "signed-in";
+		case "expired":
+		case "unreachable":
+		case "not-configured":
+			return status.health;
+		default:
+			return "signed-out";
+	}
 }
 
-const sessionLabels: Record<SessionState, string> = {
+export const sessionLabels: Record<SessionState, string> = {
 	"signed-in": "Signed in",
 	"signed-out": "Signed out",
+	expired: "Session expired",
+	unreachable: "Unreachable",
 	"not-configured": "Not configured",
 };
+
+/**
+ * Chip tooltip: reason of the failure and date of the last check
+ */
+function sessionDetails(status: OidcAuthStatus | undefined): string {
+	const checkedAt = status?.checkedAt ? `Checked ${new Date(status.checkedAt).toLocaleTimeString()}` : "";
+	return [status?.error, checkedAt].filter(Boolean).join(" · ");
+}
 
 function avatarTone(profileId: string) {
 	let hash = 0;
@@ -53,11 +71,13 @@ const IssuerLabel: React.FC<{ issuerUrl: string }> = ({ issuerUrl }) => {
 	);
 };
 
-const SessionChip: React.FC<{ state: SessionState; pending?: boolean }> = ({ state, pending }) => (
-	<span className={`AuthSettings__chip AuthSettings__chip--${pending ? "pending" : state}`}>
-		<span className="AuthSettings__dot" />
-		{pending ? "Waiting for browser…" : sessionLabels[state]}
-	</span>
+const SessionChip: React.FC<{ state: SessionState; details?: string; pending?: boolean }> = ({ state, details, pending }) => (
+	<Tooltip title={pending ? "" : (details ?? "")}>
+		<span className={`AuthSettings__chip AuthSettings__chip--${pending ? "pending" : state}`}>
+			<span className="AuthSettings__dot" />
+			{pending ? "Waiting for browser…" : sessionLabels[state]}
+		</span>
+	</Tooltip>
 );
 
 type ProfileRowProps = {
@@ -140,7 +160,7 @@ const ProfileRow: React.FC<ProfileRowProps> = ({ profile, status, usedBy, isExpa
 				</Button>
 			);
 		}
-		if (state === "signed-in") {
+		if (state === "signed-in" || state === "unreachable") {
 			return (
 				<Button size="small" variant="outlined" className="AuthSettings__neutral-btn" onClick={() => void onLogout(profile.id)}>
 					Sign out
@@ -151,8 +171,14 @@ const ProfileRow: React.FC<ProfileRowProps> = ({ profile, status, usedBy, isExpa
 		return (
 			<Tooltip title={blocker ?? ""}>
 				<span>
-					<Button size="small" variant="outlined" disabled={!!blocker || isLoginBusy} onClick={() => void onLogin(profile.id)}>
-						Sign in
+					<Button
+						size="small"
+						variant="outlined"
+						color={state === "expired" ? "error" : "primary"}
+						disabled={!!blocker || isLoginBusy}
+						onClick={() => void onLogin(profile.id)}
+					>
+						{state === "expired" ? "Sign in again" : "Sign in"}
 					</Button>
 				</span>
 			</Tooltip>
@@ -168,7 +194,7 @@ const ProfileRow: React.FC<ProfileRowProps> = ({ profile, status, usedBy, isExpa
 				<Box className="AuthSettings__identity" onClick={onToggle}>
 					<Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
 						<span className="AuthSettings__name">{profile ? profile.name : "New profile"}</span>
-						{profile && <SessionChip state={state} pending={isLoggingIn} />}
+						{profile && <SessionChip state={state} details={sessionDetails(status)} pending={isLoggingIn} />}
 					</Stack>
 					<span className="AuthSettings__issuer">
 						{profile ? (
@@ -199,7 +225,7 @@ const ProfileRow: React.FC<ProfileRowProps> = ({ profile, status, usedBy, isExpa
 						</IconButton>
 						<Menu anchorEl={menuAnchor} open={!!menuAnchor} onClose={() => setMenuAnchor(null)}>
 							<MenuItem
-								disabled={state !== "signed-in"}
+								disabled={state !== "signed-in" && state !== "unreachable"}
 								onClick={() => {
 									setMenuAnchor(null);
 									setIsSessionOpen(true);
@@ -443,7 +469,25 @@ export const AuthProfilePicker: React.FC<AuthProfilePickerProps> = ({ profiles, 
 			</Link>
 		</Box>
 		{value !== null && sessionState(statuses.find((status) => status.profileId === value)) !== "signed-in" && (
-			<span className="Settings__hint Settings__hint--warn">This profile is not signed in: sign in from « Authentication ».</span>
+			<span className="Settings__hint Settings__hint--warn">{profileIssue(statuses.find((status) => status.profileId === value))}</span>
 		)}
 	</Stack>
 );
+
+/**
+ * Why a profile cannot sign the requests of a module, null when its session is usable
+ */
+export function profileIssue(status: OidcAuthStatus | undefined): string | null {
+	switch (sessionState(status)) {
+		case "signed-in":
+			return null;
+		case "expired":
+			return `The session of this profile has expired${status?.error ? ` (${status.error})` : ""}: sign in again from « Authentication ».`;
+		case "unreachable":
+			return `The provider of this profile is unreachable${status?.error ? ` (${status.error})` : ""}.`;
+		case "not-configured":
+			return "This profile has no issuer URL or client ID: complete it from « Authentication ».";
+		default:
+			return "This profile is not signed in: sign in from « Authentication ».";
+	}
+}

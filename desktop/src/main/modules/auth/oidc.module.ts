@@ -1,12 +1,14 @@
-import { shell } from "electron";
-import { inject, injectable } from "inversify";
+import { powerMonitor, shell } from "electron";
+import { inject, injectable, LazyServiceIdentifier } from "inversify";
 import crypto, { randomUUID } from "node:crypto";
 import { ConfigModule } from "@main/modules/config/config.module";
 import { SecureStorageModule } from "@main/modules/security/secure-storage.module";
 import { mainConfig } from "@shared/config/main.config";
 import type { OidcProfile } from "@shared/config/app.config";
-import type { AuthModuleName, OidcAuthStatus, OidcProfileInput, OidcSessionTokens } from "@shared/types/auth.types";
+import type { AuthModuleName, OidcAuthStatus, OidcProfileInput, OidcSessionHealth, OidcSessionTokens } from "@shared/types/auth.types";
 import { LogModule } from "@main/modules/log.module";
+import { IpcModule } from "@main/modules/ipc.module";
+import { log } from "@main/utils/logs.utils";
 
 type OidcDiscovery = {
 	authorization_endpoint: string;
@@ -34,7 +36,25 @@ type OidcSession = {
 	expiresAt: number;
 };
 
+type OidcErrorResponse = {
+	error?: string;
+	error_description?: string;
+};
+
+/**
+ * Outcome of the last refresh of a profile
+ */
+type OidcHealthEntry = {
+	health: Extract<OidcSessionHealth, "valid" | "expired" | "unreachable">;
+	error: string | null;
+	checkedAt: string;
+};
+
 const DEFAULT_SCOPES = "openid profile offline_access";
+/** Delay between two checks of the sessions, a real refresh that also keeps the offline sessions alive */
+const HEALTH_CHECK_INTERVAL_MS = 15 * 60 * 1000;
+/** The network is often not back yet when the computer wakes up */
+const HEALTH_CHECK_RESUME_DELAY_MS = 10 * 1000;
 
 /**
  * Sessions of the OIDC profiles (one per provider / realm), every profile sharing the elytools:// redirect.
@@ -44,10 +64,15 @@ export class OidcModule extends LogModule {
 	private pendingAuth?: OidcPendingAuth;
 	private readonly sessions = new Map<string, OidcSession>();
 	private readonly discoveryCache = new Map<string, OidcDiscovery>();
+	/** Refresh in progress per profile: concurrent callers share it instead of sending the same refresh token N times */
+	private readonly refreshes = new Map<string, Promise<OidcSession>>();
+	private readonly health = new Map<string, OidcHealthEntry>();
+	private healthCheckTimer?: ReturnType<typeof setInterval>;
 
 	public constructor(
 		@inject(ConfigModule) private readonly configModule: ConfigModule,
-		@inject(SecureStorageModule) private readonly secureStorageModule: SecureStorageModule
+		@inject(SecureStorageModule) private readonly secureStorageModule: SecureStorageModule,
+		@inject(new LazyServiceIdentifier(() => IpcModule)) private readonly ipcModule: IpcModule
 	) {
 		super("OidcModule");
 	}
@@ -190,6 +215,7 @@ export class OidcModule extends LogModule {
 
 			const profile = await this.getProfile(pending.profileId);
 			await this.exchangeCodeForTokens(profile, code, pending.codeVerifier, pending.discovery, redirectUri);
+			this.setHealth(profile.id, "valid", null);
 			clearTimeout(pending.timeoutHandle);
 			this.pendingAuth = undefined;
 			pending.resolve();
@@ -212,22 +238,67 @@ export class OidcModule extends LogModule {
 
 	public async logout(profileId: string): Promise<void> {
 		this.sessions.delete(profileId);
+		this.health.delete(profileId);
 		await this.secureStorageModule.deleteSecret(this.refreshTokenKey(profileId));
+		this.notifyStatuses();
 	}
 
 	public async listStatus(): Promise<OidcAuthStatus[]> {
 		const config = await this.configModule.getConfig();
 		return await Promise.all(
-			config.auth.profiles.map(async (profile) => {
+			config.auth.profiles.map(async (profile): Promise<OidcAuthStatus> => {
 				const hasRefreshToken = !!(await this.secureStorageModule.getSecret(this.refreshTokenKey(profile.id)));
+				const configured = !!profile.issuerUrl && !!profile.clientId;
+				const entry = this.health.get(profile.id);
+				const health = this.toHealth(configured, hasRefreshToken, entry);
 				return {
 					profileId: profile.id,
-					configured: !!profile.issuerUrl && !!profile.clientId,
-					authenticated: this.isSessionValid(profile.id) || hasRefreshToken,
+					configured,
+					authenticated: health === "valid" || health === "unchecked" || health === "unreachable",
 					hasRefreshToken,
+					health,
+					error: health === "expired" || health === "unreachable" ? (entry?.error ?? null) : null,
+					checkedAt: entry?.checkedAt ?? null,
 				};
 			})
 		);
+	}
+
+	/**
+	 * Checks the sessions now, then every {@link HEALTH_CHECK_INTERVAL_MS} and when the computer wakes up
+	 */
+	public startHealthChecks() {
+		if (this.healthCheckTimer) return;
+		void this.checkProfiles();
+		this.healthCheckTimer = setInterval(() => void this.checkProfiles(), HEALTH_CHECK_INTERVAL_MS);
+
+		const checkLater = () => setTimeout(() => void this.checkProfiles(), HEALTH_CHECK_RESUME_DELAY_MS);
+		powerMonitor.on("resume", checkLater);
+		powerMonitor.on("unlock-screen", checkLater);
+	}
+
+	/**
+	 * Refreshes the session of every signed in profile, so a session revoked or expired on the provider side shows up before a module needs it
+	 */
+	@log()
+	public async checkProfiles(): Promise<OidcAuthStatus[]> {
+		const config = await this.configModule.getConfig();
+		await Promise.all(
+			config.auth.profiles
+				.filter((profile) => profile.issuerUrl && profile.clientId)
+				.map(async (profile) => {
+					if (!(await this.secureStorageModule.getSecret(this.refreshTokenKey(profile.id)))) return;
+					try {
+						await this.refreshSession(profile, "health check");
+					} catch (error) {
+						this.logger.warn(`Health check failed for profile ${profile.name}`, (error as Error).message);
+					}
+				})
+		);
+
+		const statuses = await this.listStatus();
+		this.ipcModule.sendIpcToMainContent("auth:oidc:status", statuses);
+		return statuses;
 	}
 
 	/**
@@ -270,32 +341,108 @@ export class OidcModule extends LogModule {
 			return session;
 		}
 
+		return await this.refreshSession(profile, requester);
+	}
+
+	/**
+	 * Refreshes the session of the profile, a single request at a time per profile
+	 * @param requester named in the errors
+	 */
+	private async refreshSession(profile: OidcProfile, requester: string): Promise<OidcSession> {
+		const inFlight = this.refreshes.get(profile.id);
+		if (inFlight) {
+			return await inFlight;
+		}
+
+		const refresh = this.refreshWithStoredToken(profile, requester).finally(() => this.refreshes.delete(profile.id));
+		this.refreshes.set(profile.id, refresh);
+		return await refresh;
+	}
+
+	private async refreshWithStoredToken(profile: OidcProfile, requester: string): Promise<OidcSession> {
 		const refreshToken = await this.secureStorageModule.getSecret(this.refreshTokenKey(profile.id));
 		if (!refreshToken) {
 			throw new Error(`Not authenticated on profile ${profile.name} (${requester}). Please sign in first.`);
 		}
 
-		const discovery = await this.getDiscovery(profile.issuerUrl);
-		const payload = new URLSearchParams({
-			grant_type: "refresh_token",
-			client_id: profile.clientId,
-			refresh_token: refreshToken,
-		});
-
-		const res = await fetch(discovery.token_endpoint, {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/x-www-form-urlencoded",
-			},
-			body: payload,
-		});
+		let res: Response;
+		try {
+			const discovery = await this.getDiscovery(profile.issuerUrl);
+			res = await fetch(discovery.token_endpoint, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/x-www-form-urlencoded",
+				},
+				body: new URLSearchParams({
+					grant_type: "refresh_token",
+					client_id: profile.clientId,
+					refresh_token: refreshToken,
+				}),
+			});
+		} catch (error) {
+			const reason = (error as Error).message;
+			this.setHealth(profile.id, "unreachable", reason);
+			throw new Error(`OIDC provider of profile ${profile.name} is unreachable (${requester}): ${reason}`);
+		}
 
 		if (!res.ok) {
-			throw new Error(`Failed to refresh OIDC access token of profile ${profile.name} (${res.status})`);
+			const body = await res.text();
+			this.logger.error("Failed to refresh OIDC access token", { profile: profile.name, requester, status: res.status, body });
+			const oidcError = this.parseErrorResponse(body);
+
+			// The provider no longer knows the session (revoked, expired, idle too long): the refresh token is dead.
+			if (res.status === 400 && oidcError.error === "invalid_grant") {
+				const reason = oidcError.error_description ?? oidcError.error;
+				this.sessions.delete(profile.id);
+				// A sign in may have stored a new token during the request
+				if ((await this.secureStorageModule.getSecret(this.refreshTokenKey(profile.id))) === refreshToken) {
+					await this.secureStorageModule.deleteSecret(this.refreshTokenKey(profile.id));
+				}
+				this.setHealth(profile.id, "expired", reason);
+				throw new Error(`Session of profile ${profile.name} has expired (${reason}), sign in again in Settings > Authentication`);
+			}
+
+			const reason = `${oidcError.error_description ?? oidcError.error ?? "unexpected response"} (${res.status})`;
+			this.setHealth(profile.id, "unreachable", reason);
+			throw new Error(`Failed to refresh OIDC access token of profile ${profile.name}: ${reason}`);
 		}
 
 		const tokens = (await res.json()) as OidcTokenResponse;
-		return await this.applyTokenResponse(profile.id, tokens);
+		const session = await this.applyTokenResponse(profile.id, tokens);
+		this.setHealth(profile.id, "valid", null);
+		return session;
+	}
+
+	private parseErrorResponse(body: string): OidcErrorResponse {
+		try {
+			return JSON.parse(body) as OidcErrorResponse;
+		} catch {
+			return {};
+		}
+	}
+
+	private toHealth(configured: boolean, hasRefreshToken: boolean, entry: OidcHealthEntry | undefined): OidcSessionHealth {
+		if (!configured) return "not-configured";
+		if (!hasRefreshToken) return entry?.health === "expired" ? "expired" : "signed-out";
+		if (!entry || entry.health === "expired") return "unchecked";
+		return entry.health;
+	}
+
+	/**
+	 * Records the outcome of a refresh, the renderer is notified when the health or its reason changes
+	 */
+	private setHealth(profileId: string, health: OidcHealthEntry["health"], error: string | null) {
+		const previous = this.health.get(profileId);
+		this.health.set(profileId, { health, error, checkedAt: new Date().toISOString() });
+		if (previous?.health !== health || previous.error !== error) {
+			this.notifyStatuses();
+		}
+	}
+
+	private notifyStatuses() {
+		void this.listStatus()
+			.then((statuses) => this.ipcModule.sendIpcToMainContent("auth:oidc:status", statuses))
+			.catch((error: unknown) => this.logger.error("Failed to send the OIDC statuses", error));
 	}
 
 	private async exchangeCodeForTokens(profile: OidcProfile, code: string, codeVerifier: string, discovery: OidcDiscovery, redirectUri: string): Promise<void> {

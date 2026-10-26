@@ -1,5 +1,6 @@
 import { ipcRendererWrapper } from "./preload.ipc.wrapper";
 import type { UpdateStatus } from "@shared/types/update.types";
+import type { OidcAuthStatus } from "@shared/types/auth.types";
 import { SshCommandChunkEvent, SshCommandCompletedEvent, SshConnectionStatusEvent, SshTransferProgressEvent } from "@shared/types/ssh.types";
 
 export function getIpcReceiver() {
@@ -75,6 +76,18 @@ export function getIpcReceiver() {
 				ipcRendererWrapper.on("update:status", (_, status) => {
 					callback(status);
 				});
+			},
+		},
+		auth: {
+			oidc: {
+				/**
+				 * Écoute l'état des sessions des profils OIDC (vérification périodique, session expirée)
+				 */
+				status: (callback: (statuses: OidcAuthStatus[]) => void) => {
+					ipcRendererWrapper.on("auth:oidc:status", (_, statuses) => {
+						callback(statuses);
+					});
+				},
 			},
 		},
 	};

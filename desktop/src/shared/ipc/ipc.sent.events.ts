@@ -5,6 +5,7 @@
  * *************************************************************************************/
 import type { IpcMainInvokeEvent } from "electron";
 import type { UpdateStatus } from "@shared/types/update.types";
+import type { OidcAuthStatus } from "@shared/types/auth.types";
 import type { SshCommandChunkEvent, SshCommandCompletedEvent, SshConnectionStatusEvent, SshTransferProgressEvent } from "@shared/types/ssh.types";
 
 export type IpcSentEvents = {
@@ -20,6 +21,10 @@ export type IpcSentEvents = {
 	 * État de la mise à jour automatique (vérification, disponibilité, téléchargement), à chaque changement
 	 */
 	"update:status": (event: IpcMainInvokeEvent, status: UpdateStatus) => void;
+	/**
+	 * État des sessions des profils OIDC, après chaque vérification périodique et à chaque changement de santé
+	 */
+	"auth:oidc:status": (event: IpcMainInvokeEvent, statuses: OidcAuthStatus[]) => void;
 
 	/**
 	 * La sortie standard d'un process spawn

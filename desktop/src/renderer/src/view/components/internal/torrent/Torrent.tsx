@@ -13,12 +13,20 @@ import { useModal } from "@hooks/useModal";
 import "./Torrent.scss";
 import { TorrentRowAction } from "./cells/TorrentRowAction";
 import { TorrentGroupAction } from "./cells/TorrentGroupAction";
+import { TorrentSetupAlert } from "./TorrentSetupAlert";
 
 const resolutions = ["720p", "1080p", "2160p", "4K", "8K"] as const;
 
 type Resolution = (typeof resolutions)[number];
 
 const CLEAR_DELAY = 3000;
+
+/**
+ * Message of an error thrown by the main process, without the « Error invoking remote method » prefix of Electron
+ */
+function ipcErrorMessage(error: Error) {
+	return error.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, "");
+}
 
 export function Torrent() {
 	const dispatch = useAppDispatch();
@@ -64,6 +72,7 @@ export function Torrent() {
 			if (!row.torrentUrl) return;
 			void dispatch(sendTorrent(row))
 				.unwrap()
+				.catch((error: Error) => toast.error(ipcErrorMessage(error)))
 				.finally(() => clearNonDuplicateStatus(row.id));
 		},
 		[clearNonDuplicateStatus, dispatch]
@@ -74,6 +83,7 @@ export function Torrent() {
 			e.stopPropagation();
 			void dispatch(sendTorrentGroup(group))
 				.unwrap()
+				.catch((error: Error) => toast.error(ipcErrorMessage(error)))
 				.finally(() => {
 					for (const item of group.data) {
 						clearNonDuplicateStatus(item.id);
@@ -193,6 +203,7 @@ export function Torrent() {
 
 	return (
 		<Stack className={"Torrent"}>
+			<TorrentSetupAlert />
 			<Box className={"Torrent__search"}>
 				<form onSubmit={search}>
 					<Stack spacing={1}>

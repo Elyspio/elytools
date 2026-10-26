@@ -11,6 +11,7 @@ import { DeeplinkModule } from "@main/modules/deeplink.module";
 import { MainContextModule } from "@main/modules/context/main.context.module";
 import { TrayIconModule } from "@main/modules/trayicon.module";
 import { LlmUsageModule } from "@main/modules/llm-usage/llm-usage.module";
+import { OidcModule } from "@main/modules/auth/oidc.module";
 
 const hasSingleInstanceLock = app.requestSingleInstanceLock();
 
@@ -53,6 +54,7 @@ if (hasSingleInstanceLock) {
 		const mainWindow = await windowModule.createMainWindow();
 		mainContainer.get(TrayIconModule).createTrayIcon(mainWindow);
 		mainContainer.get(LlmUsageModule).start();
+		mainContainer.get(OidcModule).startHealthChecks();
 
 		// The window may already be shown (or start hidden in the tray): check now, then every hour
 		void mainContainer.get(UpdateModule).checkForUpdates();

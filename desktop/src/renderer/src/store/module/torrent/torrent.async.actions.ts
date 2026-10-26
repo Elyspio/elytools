@@ -91,6 +91,7 @@ export const sendTorrentGroup = createAsyncThunk("sendGroup", async (group: GetT
 	}
 
 	const existingSet = new Set(existingHashes.map((h) => h.toLowerCase()));
+	const errors: string[] = [];
 
 	for (const item of group.data) {
 		if (!item.torrentUrl) {
@@ -108,9 +109,14 @@ export const sendTorrentGroup = createAsyncThunk("sendGroup", async (group: GetT
 		try {
 			await torrentService.addTorrentFromUrl(item.torrentUrl);
 			dispatch(torrentActions.setSendStatus({ id: item.id, status: "success" }));
-		} catch {
+		} catch (error) {
+			errors.push((error as Error).message);
 			dispatch(torrentActions.setSendStatus({ id: item.id, status: "error" }));
 		}
+	}
+
+	if (errors.length > 0) {
+		throw new Error(`${errors.length}/${group.data.length} torrents could not be sent: ${errors[0]}`);
 	}
 
 	return group.template;
