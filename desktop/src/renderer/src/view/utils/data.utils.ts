@@ -17,3 +17,13 @@ export function convertSizeToHumanFormat(sizeInBytes: number) {
 
 	return `${sizeInGB.toFixed(2)} GB`;
 }
+
+/**
+ * Size change from `before` to `after` as a signed percentage ("−42 %", "+3 %"), or "" below 1 %
+ */
+export function formatSizeChange(before: number, after: number) {
+	if (before <= 0) return "";
+	const change = Math.round((after / before - 1) * 100);
+	if (change === 0) return "";
+	return `${change < 0 ? "−" : "+"}${Math.abs(change)} %`;
+}

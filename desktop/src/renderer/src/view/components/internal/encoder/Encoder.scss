@@ -17,7 +17,11 @@
 	&__dashboard {
 		flex: 1 1 auto;
 		min-height: 0;
-		overflow: hidden;
+		overflow-x: hidden;
+		overflow-y: auto;
+		background-color: var(--surface-1);
+		border: 1px solid var(--border-subtle);
+		border-radius: 8px;
 	}
 
 	&__empty {
@@ -38,5 +42,176 @@
 		justify-content: space-between;
 		padding: 8px 4px;
 		border-top: 1px solid var(--border-subtle);
+	}
+}
+
+/*
+ * Encoding queue. Each row ends with a 2px rule that is both the row divider and its progress bar:
+ * idle rows show a plain divider, running rows fill it, analysis sweeps it, done rows are fully lit.
+ */
+.EncoderQueue {
+	--queue-tone: var(--text-faint);
+	font-family: "IBM Plex Sans", system-ui, sans-serif;
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	font-variant-numeric: tabular-nums;
+
+	&__row {
+		position: relative;
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		padding: 10px 16px 12px;
+		min-width: 0;
+
+		&--active {
+			--queue-tone: var(--mui-palette-primary-main, #4fd2ff);
+		}
+
+		&--done {
+			--queue-tone: var(--auth-ok, #00ff88);
+		}
+
+		&--error {
+			--queue-tone: var(--auth-danger, #ff5c7a);
+		}
+
+		&--muted {
+			--queue-tone: var(--text-muted);
+
+			.EncoderQueue__name {
+				color: var(--text-muted);
+			}
+		}
+	}
+
+	&__line {
+		display: flex;
+		align-items: baseline;
+		gap: 12px;
+		min-width: 0;
+
+		&--meta {
+			font-size: 0.75rem;
+			color: var(--text-muted);
+		}
+	}
+
+	&__name {
+		flex: 1 1 auto;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		font-size: 0.875rem;
+		font-weight: 500;
+	}
+
+	&__status {
+		flex-shrink: 0;
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		font-size: 0.75rem;
+		color: var(--queue-tone);
+	}
+
+	&__dot {
+		width: 6px;
+		height: 6px;
+		border-radius: 50%;
+		background-color: currentColor;
+	}
+
+	&__percent {
+		min-width: 4ch;
+		text-align: right;
+		color: rgba(255, 255, 255, 0.87);
+	}
+
+	&__size {
+		flex-shrink: 0;
+		white-space: nowrap;
+	}
+
+	&__gain {
+		margin-left: 6px;
+		color: var(--auth-ok, #00ff88);
+
+		&--larger {
+			color: var(--auth-warn, #ffb547);
+		}
+	}
+
+	&__note {
+		flex: 1 1 auto;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	&__quality {
+		flex-shrink: 0;
+		white-space: nowrap;
+		color: rgba(255, 255, 255, 0.7);
+		cursor: help;
+
+		&--missed {
+			color: var(--auth-warn, #ffb547);
+		}
+	}
+
+	&__track {
+		position: absolute;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		height: 2px;
+		overflow: hidden;
+		background-color: var(--border-subtle);
+	}
+
+	&__fill {
+		height: 100%;
+		background-color: var(--queue-tone);
+		transform-origin: left center;
+		transition: transform 0.4s ease-out;
+	}
+
+	&__row--done &__fill {
+		opacity: 0.45;
+	}
+
+	&__track--scanning &__fill {
+		width: 30%;
+		transform: none !important;
+		animation: encoder-queue-scan 1.6s ease-in-out infinite;
+	}
+
+	&__row:last-child &__track {
+		background-color: transparent;
+	}
+}
+
+@keyframes encoder-queue-scan {
+	from {
+		translate: -100% 0;
+	}
+	to {
+		translate: 340% 0;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.EncoderQueue__track--scanning .EncoderQueue__fill {
+		animation: none;
+		width: 100%;
+		opacity: 0.35;
+	}
+
+	.EncoderQueue__fill {
+		transition: none;
 	}
 }

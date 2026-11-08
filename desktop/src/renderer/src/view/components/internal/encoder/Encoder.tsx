@@ -12,7 +12,7 @@ import { FolderOpen, PlayArrow, Stop } from "@mui/icons-material";
 import type { FileInfo } from "@shared/types/dialog.types";
 import type { EncoderProfileId, EncoderSettings, QualityPresetId } from "@shared/types/ffmpeg.types";
 import { EncoderDashboard } from "@components/internal/encoder/EncoderDashboard";
-import { convertSizeToHumanFormat } from "@view/utils/data.utils";
+import { convertSizeToHumanFormat, formatSizeChange } from "@view/utils/data.utils";
 import { FFmpegNotInstalledAlert } from "@components/internal/encoder/FFmpegNotInstalledAlert";
 import { clampXpsnrTarget, DEFAULT_ENCODER_SETTINGS, ENCODER_PROFILES, QUALITY_PRESETS, XPSNR_TARGET_RANGE } from "@shared/encoder/encoder.profiles";
 
@@ -213,7 +213,7 @@ function EncoderFooterSummary() {
 		<Typography variant="caption" sx={{ color: "var(--text-muted)", fontFamily: "var(--font-mono)", fontSize: "0.7rem" }}>
 			{files.length} file{files.length !== 1 ? "s" : ""} &middot; {convertSizeToHumanFormat(inputSize)}
 			{done.length > 0 &&
-				` · ${done.length} converted: ${convertSizeToHumanFormat(doneBefore)} → ${convertSizeToHumanFormat(doneAfter)} (−${Math.round((1 - doneAfter / doneBefore) * 100)} %)`}
+				` · ${done.length} converted: ${convertSizeToHumanFormat(doneBefore)} → ${convertSizeToHumanFormat(doneAfter)} ${formatSizeChange(doneBefore, doneAfter)}`}
 		</Typography>
 	);
 }
