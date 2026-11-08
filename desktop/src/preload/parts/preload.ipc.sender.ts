@@ -7,7 +7,7 @@ import { DirectoryEntry, GetFolderResult } from "@shared/types/dialog.types";
 import { ExecResult, SpawnResult } from "@shared/types/process.types";
 import { RmDirOptions } from "fs";
 import { Stats } from "node:fs";
-import { FfmpegConvertOptions } from "@shared/types/ffmpeg.types";
+import { FfmpegAnalyzeOptions, FfmpegAnalyzeResult, FfmpegConvertOptions } from "@shared/types/ffmpeg.types";
 import { NyaaTorrentItem, TorrentAddResult, TorrentDownloadResult } from "@shared/types/torrent.types";
 import { OidcAuthStatus, OidcProfileInput, OidcSessionTokens } from "@shared/types/auth.types";
 import { LlmUsageStatus } from "@shared/types/llm-usage.types";
@@ -53,6 +53,12 @@ export function getIpcSender() {
 				isAvailable: async () => await ipcRendererWrapper.invoke("process:ffmpeg:get:available"),
 				convert: async (opts: FfmpegConvertOptions) => {
 					return await ipcRendererWrapper.invoke("process:ffmpeg:convert", opts);
+				},
+				analyze: async (opts: FfmpegAnalyzeOptions): Promise<FfmpegAnalyzeResult> => {
+					return await ipcRendererWrapper.invoke("process:ffmpeg:analyze", opts);
+				},
+				cancelAnalyses: async () => {
+					return await ipcRendererWrapper.invoke("process:ffmpeg:analyze:cancel");
 				},
 				getEncoders: async () => {
 					return await ipcRendererWrapper.invoke("process:ffmpeg:get:encoders");

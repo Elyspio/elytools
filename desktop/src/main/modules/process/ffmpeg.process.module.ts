@@ -3,14 +3,47 @@ import { log } from "@main/utils/logs.utils";
 import { inject, injectable } from "inversify";
 import { ProcessModule } from "@main/modules/process/process.module";
 import { resultGuards } from "@shared/types/process.types";
-import type { Encoder, EncoderType, FfmpegConvertOptions } from "@shared/types/ffmpeg.types";
+import type { Encoder, EncoderType, FfmpegAnalyzeOptions, FfmpegAnalyzeResult, FfmpegConvertOptions } from "@shared/types/ffmpeg.types";
 import type { FfprobeResult } from "@shared/types/ffprobe.types";
 import os from "node:os";
+import path from "node:path";
+import fs from "node:fs";
+import {
+	buildConvertArgs,
+	buildSampleEncodeArgs,
+	buildSampleMetricArgs,
+	computeSamplePositions,
+	ENCODER_PROFILES,
+	getTargetXpsnr,
+	parseXpsnr,
+	searchQuality,
+} from "@shared/encoder/encoder.profiles";
+
+/** Samples per analysis: the 12 NVENC sessions allowed by the driver, all at once */
+const SAMPLE_COUNT = 12;
+
+async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T, index: number) => Promise<R>): Promise<R[]> {
+	const results: R[] = Array.from({ length: items.length });
+	let next = 0;
+
+	const worker = async () => {
+		while (next < items.length) {
+			const index = next++;
+			results[index] = await fn(items[index], index);
+		}
+	};
+
+	await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+
+	return results;
+}
 
 @injectable()
 export class FfmpegProcessModule extends LogModule {
 	@inject(ProcessModule)
 	private readonly processModule!: ProcessModule;
+
+	private readonly analyses = new Set<AbortController>();
 
 	public constructor() {
 		super("FfmpegProcessModule");
@@ -96,36 +129,9 @@ export class FfmpegProcessModule extends LogModule {
 
 	@log.debug()
 	public async convert(opts: FfmpegConvertOptions): Promise<string> {
-		const args = [
-			"-y", // Overwrite output files without asking
-			"-i",
-			`${opts.files.input}`, // Source file
-			"-preset",
-			"p6", // 1 (faster) - 7 (better)
-			"-tune",
-			"hq", // film, animation, grain, stillimage, fastdecode, zerolatency
-			"-cq",
-			"24",
-			"-b:v",
-			"0",
-			"-spatial-aq",
-			"1",
-			"-temporal-aq",
-			"1",
-			"-pix_fmt",
-			"yuv420p10le",
-			"-rc",
-			"vbr",
-			"-c:a",
-			"copy", // Copy audio stream without re-encoding
-			"-c:v",
-			opts.format.id, // Use specified video encoder
-			"-r",
-			opts.fps.toString(), // Set output frame rate (used to be a multiple of 24 like 120 or 240)
-			`${opts.files.output}`,
-		];
+		const args = buildConvertArgs(opts);
 
-		this.logger.error("Starting ffmpeg process " + args.join(" "));
+		this.logger.info("Starting ffmpeg process " + args.join(" "));
 
 		const result = await this.processModule.spawn("ffmpeg", args, {});
 
@@ -135,6 +141,58 @@ export class FfmpegProcessModule extends LogModule {
 		}
 
 		return result.pid;
+	}
+
+	/**
+	 * Searches the CQ/CRF reaching the XPSNR target: samples spread over the episode are encoded
+	 * and compared with the source, for each value tried by the binary search.
+	 */
+	@log((opts: FfmpegAnalyzeOptions) => `input=${opts.input} profile=${opts.settings.profile}`)
+	public async analyze(opts: FfmpegAnalyzeOptions): Promise<FfmpegAnalyzeResult> {
+		const profile = ENCODER_PROFILES[opts.settings.profile];
+		const positions = computeSamplePositions(opts.duration, SAMPLE_COUNT);
+
+		if (positions.length === 0) throw new Error(`Unknown duration for ${opts.input}`);
+
+		const controller = new AbortController();
+		this.analyses.add(controller);
+		const dir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "elytools-encoder-"));
+
+		try {
+			return await searchQuality(profile.qualityRange, getTargetXpsnr(opts.settings), async (quality) => {
+				const scores = await mapWithConcurrency(positions, profile.sampleParallelism, (start, index) =>
+					this.measureSample(opts, path.join(dir, `sample-${quality}-${index}.mkv`), start, quality, controller.signal)
+				);
+				const xpsnr = scores.reduce((acc, score) => acc + score, 0) / scores.length;
+				this.logger.info(`${profile.qualityLabel} ${quality}: XPSNR ${xpsnr.toFixed(2)} dB`, { input: opts.input });
+				return xpsnr;
+			});
+		} finally {
+			this.analyses.delete(controller);
+			await fs.promises.rm(dir, { recursive: true, force: true });
+		}
+	}
+
+	/**
+	 * Stops every running analysis (their ffmpeg processes are killed).
+	 */
+	@log.debug()
+	public cancelAnalyses() {
+		for (const controller of this.analyses) controller.abort();
+		this.analyses.clear();
+	}
+
+	private async measureSample(opts: FfmpegAnalyzeOptions, sample: string, start: number, quality: number, signal: AbortSignal): Promise<number> {
+		const encode = await this.processModule.run("ffmpeg", buildSampleEncodeArgs(opts.input, sample, start, opts.settings, quality), signal);
+
+		if (encode.code !== 0) throw new Error(`Sample encoding failed (exit ${encode.code}): ${encode.stderr.slice(-500)}`);
+
+		const metric = await this.processModule.run("ffmpeg", buildSampleMetricArgs(sample, opts.input, start, opts.settings.deband), signal);
+		const xpsnr = parseXpsnr(metric.stderr);
+
+		if (metric.code !== 0 || xpsnr === null) throw new Error(`XPSNR measure failed (exit ${metric.code}): ${metric.stderr.slice(-500)}`);
+
+		return xpsnr;
 	}
 
 	public async probe(path: string): Promise<FfprobeResult> {

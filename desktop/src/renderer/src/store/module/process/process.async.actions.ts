@@ -1,9 +1,10 @@
 import type { StoreState } from "@store";
 
-export function waitProcessExits(getState: () => StoreState, pid: string, timeoutInSecondes = 10 * 60): Promise<void> {
+/**
+ * Resolves when the process exits with code 0. No timeout: an encode can take hours.
+ */
+export function waitProcessExits(getState: () => StoreState, pid: string): Promise<void> {
 	return new Promise<void>((resolve, reject) => {
-		setTimeout(() => reject(new Error(`process timeout after ${timeoutInSecondes}`)), timeoutInSecondes * 1000); // 10 minutes timeout
-
 		const interval = setInterval(() => {
 			const state = getState();
 

@@ -5,7 +5,7 @@ import type { ExecOptions, SpawnOptions } from "node:child_process";
 import type { DirectoryEntry, GetFolderResult, SelectPathsOptions } from "@shared/types/dialog.types";
 import type { ExecResult, SpawnResult } from "@shared/types/process.types";
 import { RmDirOptions, Stats } from "node:fs";
-import { Encoder, FfmpegConvertOptions } from "@shared/types/ffmpeg.types";
+import { Encoder, FfmpegAnalyzeOptions, FfmpegAnalyzeResult, FfmpegConvertOptions } from "@shared/types/ffmpeg.types";
 import type { FfprobeResult } from "@shared/types/ffprobe.types";
 import type { NyaaTorrentItem, TorrentAddResult, TorrentDownloadResult } from "@shared/types/torrent.types";
 import type { UpdateStatus } from "@shared/types/update.types";
@@ -87,6 +87,16 @@ export interface IpcHandledEvents {
 	 * @
 	 */
 	"process:ffmpeg:convert": (event: IpcMainInvokeEvent, opts: FfmpegConvertOptions) => Promise<string>;
+
+	/**
+	 * Cherche le CQ/CRF atteignant la cible XPSNR sur des extraits de la vidéo
+	 */
+	"process:ffmpeg:analyze": (event: IpcMainInvokeEvent, opts: FfmpegAnalyzeOptions) => Promise<FfmpegAnalyzeResult>;
+
+	/**
+	 * Arrête les analyses en cours
+	 */
+	"process:ffmpeg:analyze:cancel": (event: IpcMainInvokeEvent) => void;
 
 	/**
 	 * Récupère la liste des encodeurs disponibles dans ffmpeg

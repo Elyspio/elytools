@@ -12,11 +12,13 @@ import type {
 	LocalConfigV4,
 	LocalConfigV5,
 	LocalConfigV6,
+	LocalConfigV7,
 	TorrentConfiguration,
 } from "@shared/config/app.config";
 import { readUpdateSettings } from "@shared/config/app.config";
 import { app } from "electron";
 import { log } from "../../utils/logs.utils";
+import { DEFAULT_ENCODER_SETTINGS } from "@shared/encoder/encoder.profiles";
 
 /**
  * Upload enabled towards the production monitor, under the host name of the workstation.
@@ -64,6 +66,27 @@ export class ConfigMigrationModule extends LogModule {
 	@log.debug()
 	public async migrate(conf: LocalConfig): Promise<LatestConfig> {
 		this.logger.info("Starting migration of local config");
+		if (configGuards.is.v8(conf)) {
+			return conf;
+		}
+
+		return {
+			...this.toV7(conf),
+			version: 8,
+			encoder: { ...DEFAULT_ENCODER_SETTINGS },
+		};
+	}
+
+	/**
+	 * Indique si la configuration locale nécessite une migration
+	 * @param conf
+	 */
+	@log.debug((conf: LocalConfig) => `version=${conf.version}`)
+	public requireMigration(conf: LocalConfig): conf is LocalConfigV1 | LocalConfigV2 | LocalConfigV3 | LocalConfigV4 | LocalConfigV5 | LocalConfigV6 | LocalConfigV7 {
+		return !configGuards.is.v8(conf);
+	}
+
+	private toV7(conf: LocalConfigV1 | LocalConfigV2 | LocalConfigV3 | LocalConfigV4 | LocalConfigV5 | LocalConfigV6 | LocalConfigV7): LocalConfigV7 {
 		if (configGuards.is.v7(conf)) {
 			return conf;
 		}
@@ -74,15 +97,6 @@ export class ConfigMigrationModule extends LogModule {
 			torrent: defaultTorrentConfiguration(),
 			updates: readUpdateSettings(undefined, app.getVersion()),
 		};
-	}
-
-	/**
-	 * Indique si la configuration locale nécessite une migration
-	 * @param conf
-	 */
-	@log.debug((conf: LocalConfig) => `version=${conf.version}`)
-	public requireMigration(conf: LocalConfig): conf is LocalConfigV1 | LocalConfigV2 | LocalConfigV3 | LocalConfigV4 | LocalConfigV5 | LocalConfigV6 {
-		return !configGuards.is.v7(conf);
 	}
 
 	private toV6(conf: LocalConfigV1 | LocalConfigV2 | LocalConfigV3 | LocalConfigV4 | LocalConfigV5 | LocalConfigV6): LocalConfigV6 {

@@ -1,6 +1,7 @@
 import { injectable } from "inversify";
-import { FfmpegConvertOptions } from "@shared/types/ffmpeg.types";
+import type { FfmpegAnalyzeOptions, FfmpegConvertOptions } from "@shared/types/ffmpeg.types";
 import type { FfprobeResult } from "@shared/types/ffprobe.types";
+import { getMainVideoStream } from "@shared/encoder/encoder.profiles";
 
 @injectable()
 export class FfmpegService {
@@ -12,6 +13,14 @@ export class FfmpegService {
 		return window.preload.ipc.send.process.ffmpeg.convert(options);
 	}
 
+	analyze(options: FfmpegAnalyzeOptions) {
+		return window.preload.ipc.send.process.ffmpeg.analyze(options);
+	}
+
+	cancelAnalyses() {
+		return window.preload.ipc.send.process.ffmpeg.cancelAnalyses();
+	}
+
 	getEncoders() {
 		return window.preload.ipc.send.process.ffmpeg.getEncoders();
 	}
@@ -21,27 +30,13 @@ export class FfmpegService {
 	}
 
 	public extractNbFrameProcessed(chunk: string) {
-		const data = chunk
-			.toString()
-			.split("\n")
-			.map((line) =>
-				line
-					.trim()
-					.split("=")
-					.map((l) => l.trim().split(" "))
-			);
+		const last = [...chunk.matchAll(/frame=\s*(\d+)/g)].at(-1);
 
-		if (data[0][0][0] !== "frame") {
-			return null;
-		}
-
-		const frame = data[0][1][0];
-
-		return Number.parseInt(frame);
+		return last ? Number.parseInt(last[1]) : null;
 	}
 
 	public extractFps(probe: FfprobeResult) {
-		const videoStream = probe.streams.find((s) => s.codec_type === "video");
+		const videoStream = getMainVideoStream(probe);
 
 		if (!videoStream || !videoStream.avg_frame_rate) {
 			return 0;
@@ -49,7 +44,7 @@ export class FfmpegService {
 
 		const [numerator, denominator] = videoStream.avg_frame_rate.split("/").map(Number);
 
-		return numerator / denominator;
+		return denominator ? numerator / denominator : 0;
 	}
 
 	public extractNbFrames(probe: FfprobeResult) {

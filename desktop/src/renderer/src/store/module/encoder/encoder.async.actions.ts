@@ -1,216 +1,210 @@
 import { createAsyncActionGenerator, getService } from "@store/utils/utils.actions";
 import { webContainer } from "@core/di/web.container";
 import { FfmpegService } from "@services/media/ffmpeg.service";
-import type { Encoder } from "@shared/types/ffmpeg.types";
+import type { Encoder, EncoderSettings, SourcePlan } from "@shared/types/ffmpeg.types";
 import { waitProcessExits } from "@modules/process/process.async.actions";
-import { removeFileProcess, setFileProcesses, setProcessProgress } from "@modules/encoder/encoder.reducer";
+import { removeFileProcess, resetFileEncodes, setFileProcesses, setProcessProgress, updateFileEncode } from "@modules/encoder/encoder.reducer";
 import FilesService from "@services/files/files.service";
 import { PathService } from "@services/files/path.service";
 import type { Media } from "@components/internal/encoder/type";
 import { ProcessService } from "@services/common/process.service";
+import { DEFAULT_ENCODER_SETTINGS, ENCODER_PROFILES, getConvertedFilePath, getFinalFilePath, planSource } from "@shared/encoder/encoder.profiles";
+import type { ExtraArgument, StoreState } from "@store";
 
 const createAsyncThunk = createAsyncActionGenerator("encoder");
-
-type IgnoreAlreadyConvertedFilesParams = {
-	format: string;
-	files: Media[];
-};
-
-/**
- * Ignore files that are already converted to the target format.
- * Marks their progress as 100%
- * @warning This function only supports hevc, h264 and av1 for now
- * @warning Files will not be modified nor have an associated process
- */
-export const ignoreAlreadyConvertedFiles = createAsyncThunk("skip-already-converted", ({ files, format }: IgnoreAlreadyConvertedFilesParams, { dispatch }) => {
-	let alreadyConverted: Media[] = [];
-
-	if (format.includes("hevc")) {
-		alreadyConverted = files.filter((f) => f.property.streams.find((s) => s.codec_name === "hevc"));
-	}
-
-	if (format.includes("h264")) {
-		alreadyConverted = files.filter((f) => f.property.streams.find((s) => s.codec_name === "h264"));
-	}
-
-	if (format.includes("av1")) {
-		alreadyConverted = files.filter((f) => f.property.streams.find((s) => s.codec_name === "av1"));
-	}
-
-	if (alreadyConverted.length > 0) {
-		for (const media of alreadyConverted) {
-			dispatch(setProcessProgress({ path: media.file.path, value: 1 }));
-		}
-	}
-
-	return alreadyConverted;
-});
 
 export const encoderConvertStates = {
 	isConverting: false,
 };
 
+type Job = {
+	media: Media;
+	plan: SourcePlan;
+	/** CQ/CRF from the analysis, null for a remux */
+	quality: number | null;
+};
+
 /**
- * Convert media files to the selected format
- * @throws Error if no format is selected
- * @throws Error if no files are selected
+ * Converts the selected files with the encoder settings of the local config.
+ * Every file is planned and analyzed first (the analysis uses every NVENC session),
+ * then the files are encoded a few at a time.
  */
 export const convertMedia = createAsyncThunk("convert", async (_, { getState, dispatch, extra }) => {
 	encoderConvertStates.isConverting = true;
 
 	const state = getState();
+	const settings: EncoderSettings = state.config.current.encoder ?? DEFAULT_ENCODER_SETTINGS;
+	const profile = ENCODER_PROFILES[settings.profile];
 
-	const { format, fps } = state.encoder.current;
-
-	if (!format) throw new Error("Unknown format");
+	if (!state.encoder.ffmpeg?.encoders.some((e) => e.id === profile.encoder)) {
+		throw new Error(`Encoder ${profile.encoder} is not available in this ffmpeg build`);
+	}
 
 	const ffmpegService = getService(FfmpegService, extra);
-	const fileService = getService(FilesService, extra);
-	const pathService = getService(PathService, extra);
-
 	const files = state.media.data;
 
 	if (files.length === 0) throw new Error("No files to convert");
 
-	// region Skip already converted files
-	const alreadyConverted = await dispatch(
-		ignoreAlreadyConvertedFiles({
-			format,
-			files,
-		})
-	).unwrap();
+	dispatch(resetFileEncodes());
 
-	// endregion Skip already converted files
+	const jobs: Job[] = [];
 
-	const parallelConversions = 3;
+	// region Plan and analyze
+	for (const media of files) {
+		if (!encoderConvertStates.isConverting) break;
 
-	const conversionBatches: Media[][] = files.reduce((acc, curr, index) => {
-		const arrayIndex = index % parallelConversions;
+		const path = media.file.path;
+		const plan = planSource(media.property, path);
 
-		acc[arrayIndex] ??= [];
+		if (plan.action === "skip") {
+			dispatch(updateFileEncode({ path, phase: "skipped", note: plan.reason }));
+			continue;
+		}
 
-		acc[arrayIndex].push(curr);
+		if (plan.action === "remux") {
+			dispatch(updateFileEncode({ path, phase: "pending", note: plan.reason }));
+			jobs.push({ media, plan, quality: null });
+			continue;
+		}
 
-		return acc;
-	}, [] as Media[][]);
+		dispatch(updateFileEncode({ path, phase: "analyzing" }));
+
+		try {
+			const analysis = await ffmpegService.analyze({ input: path, duration: Number(media.property.format.duration), settings });
+			dispatch(updateFileEncode({ path, phase: "pending", quality: analysis.quality, xpsnr: analysis.xpsnr, targetReached: analysis.targetReached }));
+			jobs.push({ media, plan, quality: analysis.quality });
+		} catch (e) {
+			const aborted = !encoderConvertStates.isConverting;
+			dispatch(updateFileEncode({ path, phase: aborted ? "aborted" : "failed", note: aborted ? undefined : errorMessage(e) }));
+		}
+	}
+	// endregion
+
+	// region Encode
+	const queue = [...jobs];
 
 	await Promise.allSettled(
-		conversionBatches.map(async (batch) => {
-			for (const file of batch.filter((f) => !alreadyConverted.includes(f))) {
-				if (!encoderConvertStates.isConverting) break;
-
-				const outputPath = getConvertedFilePath(file.file.path);
-
-				const pid = await ffmpegService.convert({
-					format: { id: format },
-					files: {
-						input: file.file.path,
-						output: outputPath,
-					},
-					fps,
-				});
-
-				dispatch(setFileProcesses({ path: file.file.path, pid }));
-
-				const sourceNbFrames = ffmpegService.extractNbFrames(file.property);
-				const sourceFps = ffmpegService.extractFps(file.property);
-				const nbFrames = sourceFps > 0 ? Math.floor(sourceNbFrames * (fps / sourceFps)) : sourceNbFrames;
-
-				const removeListener = window.preload.ipc.on.process.spawn.stderr((pid1, data) => {
-					if (pid1 !== pid) return;
-
-					const frame = ffmpegService.extractNbFrameProcessed(data);
-
-					if (frame === null) return;
-
-					const percentProgress = frame / nbFrames;
-
-					dispatch(
-						setProcessProgress({
-							path: file.file.path,
-							value: percentProgress,
-						})
-					);
-				});
-
+		Array.from({ length: profile.fileParallelism }, async () => {
+			for (let job = queue.shift(); job && encoderConvertStates.isConverting; job = queue.shift()) {
 				try {
-					await waitProcessExits(getState, pid);
-				} catch {
-					removeListener();
-					break;
+					await runJob(job, settings, { dispatch, getState, extra });
+				} catch (e) {
+					const aborted = !encoderConvertStates.isConverting;
+					dispatch(updateFileEncode({ path: job.media.file.path, phase: aborted ? "aborted" : "failed", note: aborted ? undefined : errorMessage(e) }));
 				}
-
-				removeListener();
-
-				if (!encoderConvertStates.isConverting) break;
-
-				// Move converted file to original location
-				const originalDir = pathService.dirname(file.file.path);
-
-				const oldDir = pathService.join(originalDir, "old");
-
-				const oldPath = pathService.join(oldDir, pathService.filename(file.file.path));
-
-				await fileService.move(file.file.path, oldPath);
-
-				await fileService.move(outputPath, file.file.path);
 			}
 		})
 	);
+	// endregion
 
 	dispatch(removeFileProcess({ pids: getState().encoder.current.pids }));
 });
 
-export const SpecialEncodingProgressValues = {
-	Aborted: -1,
+type ThunkApi = {
+	dispatch: (action: ReturnType<typeof updateFileEncode | typeof setFileProcesses | typeof setProcessProgress>) => unknown;
+	getState: () => StoreState;
+	extra: ExtraArgument;
 };
 
+async function runJob({ media, plan, quality }: Job, settings: EncoderSettings, { dispatch, getState, extra }: ThunkApi) {
+	const ffmpegService = getService(FfmpegService, extra);
+	const fileService = getService(FilesService, extra);
+	const pathService = getService(PathService, extra);
+
+	const path = media.file.path;
+	const outputPath = getConvertedFilePath(path);
+
+	dispatch(updateFileEncode({ path, phase: plan.action === "remux" ? "remuxing" : "encoding" }));
+
+	const pid = await ffmpegService.convert({
+		settings,
+		quality,
+		files: { input: path, output: outputPath },
+		subtitleCodecs: media.property.streams.filter((s) => s.codec_type === "subtitle").map((s) => s.codec_name),
+	});
+
+	dispatch(setFileProcesses({ path, pid }));
+
+	const nbFrames = ffmpegService.extractNbFrames(media.property);
+
+	const removeListener = window.preload.ipc.on.process.spawn.stderr((pid1, data) => {
+		if (pid1 !== pid) return;
+
+		const frame = ffmpegService.extractNbFrameProcessed(data);
+
+		if (frame === null || nbFrames === 0) return;
+
+		dispatch(setProcessProgress({ path, value: Math.min(frame / nbFrames, 0.99) }));
+	});
+
+	try {
+		await waitProcessExits(getState, pid);
+	} catch (e) {
+		await deleteQuietly(outputPath);
+		throw e;
+	} finally {
+		removeListener();
+	}
+
+	if (!encoderConvertStates.isConverting) {
+		await deleteQuietly(outputPath);
+		return;
+	}
+
+	const outputSize = (await window.preload.ipc.send.file.lstat(outputPath)).size;
+
+	if (plan.action === "encode" && outputSize >= media.file.size) {
+		await deleteQuietly(outputPath);
+		dispatch(updateFileEncode({ path, phase: "skipped", note: "Larger than the source, original kept", outputSize }));
+		dispatch(setProcessProgress({ path, value: 1 }));
+		return;
+	}
+
+	// The original goes to old/, the converted file takes its place (always .mkv)
+	const oldDir = pathService.join(pathService.dirname(path), "old");
+	await fileService.ensureDir(oldDir);
+	await fileService.move(path, pathService.join(oldDir, pathService.filename(path)));
+	await fileService.move(outputPath, getFinalFilePath(path));
+
+	dispatch(updateFileEncode({ path, phase: "done", outputSize }));
+	dispatch(setProcessProgress({ path, value: 1 }));
+}
+
+async function deleteQuietly(path: string) {
+	try {
+		if (await window.preload.ipc.send.file.exists(path)) await window.preload.ipc.send.file.delete(path);
+	} catch {
+		// Leftover file, nothing else to do
+	}
+}
+
+function errorMessage(e: unknown) {
+	return e instanceof Error ? e.message : String(e);
+}
+
 export const stopConvertMedia = createAsyncThunk("stop-convert", async (_, { dispatch, getState, extra }) => {
-	const state = getState();
-
-	const pids = [...state.encoder.current.pids];
-
 	encoderConvertStates.isConverting = false;
 
-	if (pids.length === 0) return;
+	const ffmpegService = getService(FfmpegService, extra);
+	await ffmpegService.cancelAnalyses();
+
+	const state = getState();
+	const pids = [...state.encoder.current.pids];
 
 	const processService = getService(ProcessService, extra);
 
 	for (const pid of pids) {
 		await processService.kill(pid);
+	}
 
-		await sleep(500);
-
-		const currentPath = Object.entries(state.encoder.processes.pids).find(([, p]) => p === pid)?.[0];
-
-		if (currentPath) {
-			dispatch(
-				setProcessProgress({
-					path: currentPath,
-					value: SpecialEncodingProgressValues.Aborted,
-				})
-			);
+	for (const [path, file] of Object.entries(state.encoder.processes.files)) {
+		if (file.phase === "analyzing" || file.phase === "encoding" || file.phase === "remuxing") {
+			dispatch(updateFileEncode({ path, phase: "aborted" }));
 		}
 	}
 
 	dispatch(removeFileProcess({ pids }));
 });
-
-function sleep(milliseconds: number) {
-	return new Promise((resolve) => setTimeout(resolve, milliseconds));
-}
-
-function getConvertedFilePath(filePath: string): string {
-	const extensionIndex = filePath.lastIndexOf(".");
-
-	if (extensionIndex === -1) {
-		return `${filePath}_converted`;
-	}
-
-	const name = filePath.substring(0, extensionIndex);
-	const extension = filePath.substring(extensionIndex);
-	return `${name}_converted${extension}`;
-}
 
 export const setupFfmpeg = createAsyncThunk("ffmpeg/setup", async (): Promise<{ isAvailable: boolean; encoders?: Encoder[] }> => {
 	const ffmpegService = webContainer.get(FfmpegService);

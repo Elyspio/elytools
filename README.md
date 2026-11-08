@@ -14,7 +14,7 @@ Elytools brings video encoding, torrent search, project cleanup, SSH sessions, a
 
 | Tool               | Capabilities                                                                                                      |
 | ------------------ | ----------------------------------------------------------------------------------------------------------------- |
-| **Encoder**        | Inspect media with FFprobe and convert video with FFmpeg.                                                         |
+| **Encoder**        | Convert video to AV1/HEVC (NVENC or SVT-AV1) at an XPSNR quality target, keeping every track, in MKV.             |
 | **Torrent**        | Search nyaa.si, detect existing torrents, and send downloads to a qBittorrent endpoint using OIDC authentication. |
 | **Purge**          | Scan for dependency folders and build caches, estimate their size, and remove selected categories of artifacts.   |
 | **SSH**            | Organize remote machines and work with files and commands over SSH.                                               |

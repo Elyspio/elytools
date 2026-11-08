@@ -11,7 +11,7 @@ import { ProcessModule } from "@main/modules/process/process.module";
 import { ExecResult, SpawnResult } from "@shared/types/process.types";
 import { Stats } from "node:fs";
 import { FfmpegProcessModule } from "@main/modules/process/ffmpeg.process.module";
-import { Encoder, FfmpegConvertOptions } from "@shared/types/ffmpeg.types";
+import { Encoder, FfmpegAnalyzeResult, FfmpegConvertOptions } from "@shared/types/ffmpeg.types";
 import type { FfprobeResult } from "@shared/types/ffprobe.types";
 import path from "node:path";
 import os from "os";
@@ -184,6 +184,12 @@ const ipcHandlers: IpcHandledEvents = {
 	},
 	"process:ffmpeg:convert"(_: IpcMainInvokeEvent, opts: FfmpegConvertOptions): Promise<string> {
 		return mainContainer.get(FfmpegProcessModule).convert(opts);
+	},
+	"process:ffmpeg:analyze"(_, opts): Promise<FfmpegAnalyzeResult> {
+		return mainContainer.get(FfmpegProcessModule).analyze(opts);
+	},
+	"process:ffmpeg:analyze:cancel"(): void {
+		mainContainer.get(FfmpegProcessModule).cancelAnalyses();
 	},
 	"process:ffmpeg:get:available"(): Promise<boolean> {
 		return mainContainer.get(FfmpegProcessModule).isAvailable();

@@ -8,6 +8,7 @@ import { ConfigMigrationModule, defaultAuthConfiguration, defaultLlmUsageConfigu
 import { SecureStorageModule } from "../security/secure-storage.module";
 import { log } from "../../utils/logs.utils";
 import { inject, injectable } from "inversify";
+import { DEFAULT_ENCODER_SETTINGS } from "@shared/encoder/encoder.profiles";
 
 @injectable()
 export class ConfigModule extends LogModule {
@@ -104,7 +105,7 @@ export class ConfigModule extends LogModule {
 	@log.debug()
 	private async getDefaultConfig(): Promise<LatestConfig> {
 		return {
-			version: 7,
+			version: 8,
 			windows: { position: {} },
 			appboard: { show: [] },
 			frame: {
@@ -135,6 +136,7 @@ export class ConfigModule extends LogModule {
 			llmUsage: defaultLlmUsageConfiguration(),
 			torrent: defaultTorrentConfiguration(),
 			updates: readUpdateSettings(undefined, app.getVersion()),
+			encoder: { ...DEFAULT_ENCODER_SETTINGS },
 		};
 	}
 }

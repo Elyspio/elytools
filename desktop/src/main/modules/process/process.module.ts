@@ -37,6 +37,24 @@ export class ProcessModule extends LogModule {
 		});
 	}
 
+	/**
+	 * Runs a command to completion without forwarding its output to the renderer.
+	 * Only the end of stderr is kept (summary lines such as the ffmpeg metrics).
+	 */
+	@log.debug()
+	public async run(command: string, args: string[], signal?: AbortSignal): Promise<{ code: number | null; stderr: string }> {
+		return new Promise((resolve, reject) => {
+			const child = spawn(command, args, { stdio: ["ignore", "ignore", "pipe"], windowsHide: true, signal });
+			let stderr = "";
+
+			child.stderr.on("data", (data: Buffer) => {
+				stderr = (stderr + data.toString("utf-8")).slice(-64 * 1024);
+			});
+			child.once("error", reject);
+			child.once("close", (code) => resolve({ code, stderr }));
+		});
+	}
+
 	@log.debug()
 	async spawn(command: string, args: string[], options: SpawnOptions): Promise<SpawnResult> {
 		const process = spawn(command, args, { ...options, stdio: "pipe" });
