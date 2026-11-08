@@ -15,11 +15,12 @@ export type EncoderProfile = {
 	sampleParallelism: number;
 	/** Episodes encoded at the same time (3 NVENC engines on a RTX 5090, SVT-AV1 already uses every core) */
 	fileParallelism: number;
-	videoArgs: (quality: number) => string[];
+	/** Encoder arguments for the video stream designated by `stream` (e.g. `v:0`) */
+	videoArgs: (quality: number, stream: string) => string[];
 };
 
-const nvencArgs = (codec: string, extra: string[]) => (quality: number) => [
-	"-c:v",
+const nvencArgs = (codec: string, extra: (stream: string) => string[]) => (quality: number, stream: string) => [
+	`-c:${stream}`,
 	codec,
 	"-preset",
 	"p7",
@@ -29,9 +30,9 @@ const nvencArgs = (codec: string, extra: string[]) => (quality: number) => [
 	"vbr",
 	"-cq",
 	quality.toString(),
-	"-b:v",
+	`-b:${stream}`,
 	"0",
-	"-pix_fmt",
+	`-pix_fmt:${stream}`,
 	"p010le",
 	"-rc-lookahead",
 	"32",
@@ -43,7 +44,7 @@ const nvencArgs = (codec: string, extra: string[]) => (quality: number) => [
 	"4",
 	"-b_ref_mode",
 	"middle",
-	...extra,
+	...extra(stream),
 ];
 
 export const ENCODER_PROFILES: Record<EncoderProfileId, EncoderProfile> = {
@@ -56,7 +57,7 @@ export const ENCODER_PROFILES: Record<EncoderProfileId, EncoderProfile> = {
 		qualityRange: { min: 22, max: 36 },
 		sampleParallelism: 12,
 		fileParallelism: 3,
-		videoArgs: nvencArgs("av1_nvenc", []),
+		videoArgs: nvencArgs("av1_nvenc", () => []),
 	},
 	hevc_nvenc: {
 		id: "hevc_nvenc",
@@ -67,7 +68,7 @@ export const ENCODER_PROFILES: Record<EncoderProfileId, EncoderProfile> = {
 		qualityRange: { min: 16, max: 32 },
 		sampleParallelism: 12,
 		fileParallelism: 3,
-		videoArgs: nvencArgs("hevc_nvenc", ["-profile:v", "main10"]),
+		videoArgs: nvencArgs("hevc_nvenc", (stream) => [`-profile:${stream}`, "main10"]),
 	},
 	libsvtav1: {
 		id: "libsvtav1",
@@ -78,14 +79,14 @@ export const ENCODER_PROFILES: Record<EncoderProfileId, EncoderProfile> = {
 		qualityRange: { min: 18, max: 40 },
 		sampleParallelism: 4,
 		fileParallelism: 1,
-		videoArgs: (quality) => [
-			"-c:v",
+		videoArgs: (quality, stream) => [
+			`-c:${stream}`,
 			"libsvtav1",
 			"-preset",
 			"4",
 			"-crf",
 			quality.toString(),
-			"-pix_fmt",
+			`-pix_fmt:${stream}`,
 			"yuv420p10le",
 			"-svtav1-params",
 			"enable-variance-boost=1:sharpness=1:enable-qm=1:qm-min=0",
@@ -120,12 +121,31 @@ export const SAMPLE_EDGE_SKIP = 90;
 /** Codecs efficient enough not to be encoded again (generation loss for a small gain) */
 const EFFICIENT_CODECS = ["hevc", "av1"];
 
+/** Accepted custom targets: below, any CQ passes; above, none does */
+export const XPSNR_TARGET_RANGE = { min: 35, max: 50 };
+
+export function clampXpsnrTarget(value: number): number {
+	if (!Number.isFinite(value)) return QUALITY_PRESETS.standard.xpsnr;
+	return Math.min(XPSNR_TARGET_RANGE.max, Math.max(XPSNR_TARGET_RANGE.min, value));
+}
+
 export function getTargetXpsnr(settings: EncoderSettings): number {
-	return settings.quality === "custom" ? settings.customXpsnr : QUALITY_PRESETS[settings.quality].xpsnr;
+	return settings.quality === "custom" ? clampXpsnrTarget(settings.customXpsnr) : QUALITY_PRESETS[settings.quality].xpsnr;
 }
 
 export function getMainVideoStream(probe: FfprobeResult) {
 	return probe.streams.find((s) => s.codec_type === "video" && !s.disposition?.attached_pic);
+}
+
+/**
+ * Index of the main video among every video stream (cover pictures included), as used by `v:N` specifiers.
+ */
+export function getMainVideoIndex(probe: FfprobeResult): number {
+	const main = getMainVideoStream(probe);
+	return Math.max(
+		0,
+		probe.streams.filter((s) => s.codec_type === "video").findIndex((s) => s === main)
+	);
 }
 
 /**
@@ -192,16 +212,31 @@ export async function searchQuality(range: { min: number; max: number }, target:
 	return best ?? { quality: range.min, xpsnr: await measureOnce(range.min), targetReached: false };
 }
 
-const MAP_ARGS = ["-map", "0:V:0", "-map", "0:a?", "-map", "0:s?", "-map", "0:t?", "-map_metadata", "0", "-map_chapters", "0"];
+/** Every video (cover pictures included), audio, subtitle and attachment (fonts) stream. Data streams cannot go in MKV. */
+const MAP_ARGS = ["-map", "0:v", "-map", "0:a?", "-map", "0:s?", "-map", "0:t?", "-map_metadata", "0", "-map_chapters", "0"];
 
 /**
- * Full conversion: keeps every audio, subtitle and attachment (fonts) stream, copies audio, outputs MKV.
+ * Statistics written by mkvmerge describe the source stream: once copied, Jellyfin would report the
+ * bitrate of the source for the encoded stream. Tags carry a language suffix when mkvmerge set one.
+ */
+const SOURCE_STATISTICS_TAGS = ["BPS", "NUMBER_OF_BYTES", "NUMBER_OF_FRAMES", "_STATISTICS_TAGS", "_STATISTICS_WRITING_APP", "_STATISTICS_WRITING_DATE_UTC"];
+
+/**
+ * Full conversion: keeps every stream, encodes the main video only, copies everything else, outputs MKV.
  * The source frame rate is kept.
  */
 export function buildConvertArgs(opts: FfmpegConvertOptions): string[] {
 	const profile = ENCODER_PROFILES[opts.settings.profile];
+	const stream = `v:${opts.videoStreamIndex}`;
 
-	const video = opts.quality === null ? ["-c:v", "copy"] : [...(opts.settings.deband ? ["-vf", DEBAND_FILTER] : []), ...profile.videoArgs(opts.quality)];
+	const video =
+		opts.quality === null
+			? []
+			: [
+					...(opts.settings.deband ? [`-filter:${stream}`, DEBAND_FILTER] : []),
+					...profile.videoArgs(opts.quality, stream),
+					...SOURCE_STATISTICS_TAGS.flatMap((tag) => [`-metadata:s:${stream}`, `${tag}=`, `-metadata:s:${stream}`, `${tag}-eng=`]),
+				];
 
 	// MP4 text subtitles cannot be stored as is in MKV
 	const subtitles = opts.subtitleCodecs.flatMap((codec, index) => (codec === "mov_text" ? [`-c:s:${index}`, "srt"] : []));
@@ -230,7 +265,7 @@ export function buildSampleEncodeArgs(input: string, output: string, start: numb
 		"-map",
 		"0:V:0",
 		...(settings.deband ? ["-vf", DEBAND_FILTER] : []),
-		...profile.videoArgs(quality),
+		...profile.videoArgs(quality, "v:0"),
 		"-an",
 		"-sn",
 		"-dn",
@@ -241,10 +276,11 @@ export function buildSampleEncodeArgs(input: string, output: string, start: numb
 }
 
 /**
- * MKV timestamps are rounded to the millisecond (41 or 42 ms per frame at 23.976 fps): pairing frames by
- * timestamp shifts one frame every other frame. Frames are paired by index instead.
+ * MKV timestamps are rounded to the millisecond (41 or 42 ms per frame at 23.976 fps), and the sample and the
+ * source may use different time bases: pairing frames by timestamp shifts frames. Both sides get the same
+ * time base and a timestamp equal to the frame index.
  */
-const PAIR_BY_INDEX = "setpts=N/(24*TB),format=yuv420p10le";
+const PAIR_BY_INDEX = "settb=1/24,setpts=N,format=yuv420p10le";
 
 /**
  * Compares a sample with the same window of the source. With deband, the reference is debanded too:
@@ -285,10 +321,11 @@ export function parseXpsnr(stderr: string): number | null {
 }
 
 /**
- * Output path of an encode in progress, next to the source: `name_converted.mkv`.
+ * Output path of an encode in progress, next to the source. It keeps the source extension, so two sources
+ * with the same base name (`ep.mp4`, `ep.mkv`) never share it.
  */
 export function getConvertedFilePath(filePath: string): string {
-	return `${stripExtension(filePath)}_converted.mkv`;
+	return `${filePath}.elytools-tmp.mkv`;
 }
 
 /**
@@ -302,4 +339,45 @@ function stripExtension(filePath: string) {
 	const separator = Math.max(filePath.lastIndexOf("/"), filePath.lastIndexOf("\\"));
 	const extensionIndex = filePath.lastIndexOf(".");
 	return extensionIndex > separator ? filePath.substring(0, extensionIndex) : filePath;
+}
+
+const samePath = (a: string, b: string) => a.replaceAll("\\", "/").toLowerCase() === b.replaceAll("\\", "/").toLowerCase();
+
+/**
+ * Sources of the batch that would end at the same final path (`ep.mp4` and `ep.mkv` both give `ep.mkv`),
+ * mapped to the reason they are left untouched.
+ */
+export function findOutputConflicts(paths: string[]): Map<string, string> {
+	const conflicts = new Map<string, string>();
+
+	for (const path of paths) {
+		const others = paths.filter((other) => other !== path && samePath(getFinalFilePath(other), getFinalFilePath(path)));
+		if (others.length > 0) conflicts.set(path, `Same output name as ${others.map(basename).join(", ")}`);
+	}
+
+	return conflicts;
+}
+
+/**
+ * Whether the converted file would replace another file than its own source.
+ */
+export function isFinalPathTaken(source: string, exists: boolean): boolean {
+	return exists && !samePath(getFinalFilePath(source), source);
+}
+
+/**
+ * First free path among `name.ext`, `name (2).ext`, `name (3).ext`… (an archived original is never overwritten).
+ */
+export async function findAvailablePath(path: string, exists: (candidate: string) => Promise<boolean>): Promise<string> {
+	const base = stripExtension(path);
+	const extension = path.substring(base.length);
+
+	for (let index = 1; ; index++) {
+		const candidate = index === 1 ? path : `${base} (${index})${extension}`;
+		if (!(await exists(candidate))) return candidate;
+	}
+}
+
+function basename(filePath: string) {
+	return filePath.substring(Math.max(filePath.lastIndexOf("/"), filePath.lastIndexOf("\\")) + 1);
 }

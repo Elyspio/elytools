@@ -14,7 +14,7 @@ import type { EncoderProfileId, EncoderSettings, QualityPresetId } from "@shared
 import { EncoderDashboard } from "@components/internal/encoder/EncoderDashboard";
 import { convertSizeToHumanFormat } from "@view/utils/data.utils";
 import { FFmpegNotInstalledAlert } from "@components/internal/encoder/FFmpegNotInstalledAlert";
-import { DEFAULT_ENCODER_SETTINGS, ENCODER_PROFILES, QUALITY_PRESETS } from "@shared/encoder/encoder.profiles";
+import { clampXpsnrTarget, DEFAULT_ENCODER_SETTINGS, ENCODER_PROFILES, QUALITY_PRESETS, XPSNR_TARGET_RANGE } from "@shared/encoder/encoder.profiles";
 
 const profiles = Object.values(ENCODER_PROFILES);
 const qualityPresets = Object.entries(QUALITY_PRESETS) as [Exclude<QualityPresetId, "custom">, { label: string; xpsnr: number }][];
@@ -26,6 +26,7 @@ export function Encoder() {
 	const encoders = useAppSelector(encodersSelectors.ffmpeg.encoders);
 	const files = useAppSelector((s) => s.media.data);
 	const encoding = useAppSelector((s) => s.encoder.encoding);
+	const stopping = useAppSelector((s) => s.encoder.stopping);
 	const config = useAppSelector((s) => s.config.current);
 	const settings: EncoderSettings = config.encoder ?? DEFAULT_ENCODER_SETTINGS;
 
@@ -111,18 +112,11 @@ export function Encoder() {
 							</Tooltip>
 
 							{settings.quality === "custom" && (
-								<TextField
-									sx={{ width: 110 }}
-									size={"small"}
-									type={"number"}
-									label={"XPSNR (dB)"}
+								<CustomXpsnrField
+									key={settings.customXpsnr}
 									value={settings.customXpsnr}
 									disabled={encoding}
-									slotProps={{ htmlInput: { min: 35, max: 50, step: 0.5 } }}
-									onChange={(event) => {
-										const value = Number.parseFloat(event.target.value);
-										if (Number.isFinite(value)) updateSettings({ customXpsnr: value });
-									}}
+									onCommit={(customXpsnr) => updateSettings({ customXpsnr })}
 								/>
 							)}
 
@@ -158,8 +152,8 @@ export function Encoder() {
 							<EncoderFooterSummary />
 
 							{encoding ? (
-								<Button size={"small"} color={"error"} variant="outlined" startIcon={<Stop />} onClick={() => actions.stopConvertMedia()}>
-									Cancel
+								<Button size={"small"} color={"error"} variant="outlined" startIcon={<Stop />} disabled={stopping} onClick={() => actions.stopConvertMedia()}>
+									{stopping ? "Stopping…" : "Cancel"}
 								</Button>
 							) : (
 								<Button size={"small"} variant="contained" startIcon={<PlayArrow />} disabled={!profileAvailable} onClick={() => actions.convert()}>
@@ -172,6 +166,37 @@ export function Encoder() {
 			)}
 			{!isFfmpegInstalled && <FFmpegNotInstalledAlert />}
 		</Stack>
+	);
+}
+
+/**
+ * Saved on blur (or Enter), clamped to the accepted range: a value typed halfway is never used as a target.
+ * Keyed by the saved value, so the draft restarts from it after a save.
+ */
+function CustomXpsnrField({ value, disabled, onCommit }: { value: number; disabled: boolean; onCommit: (value: number) => void }) {
+	const [draft, setDraft] = React.useState(value.toString());
+
+	const commit = () => {
+		const clamped = clampXpsnrTarget(Number.parseFloat(draft));
+		setDraft(clamped.toString());
+		if (clamped !== value) onCommit(clamped);
+	};
+
+	return (
+		<TextField
+			sx={{ width: 110 }}
+			size={"small"}
+			type={"number"}
+			label={"XPSNR (dB)"}
+			value={draft}
+			disabled={disabled}
+			slotProps={{ htmlInput: { min: XPSNR_TARGET_RANGE.min, max: XPSNR_TARGET_RANGE.max, step: 0.5 } }}
+			onChange={(event) => setDraft(event.target.value)}
+			onBlur={commit}
+			onKeyDown={(event) => {
+				if (event.key === "Enter") commit();
+			}}
+		/>
 	);
 }
 

@@ -2,23 +2,45 @@ import { createAsyncActionGenerator, getService } from "@store/utils/utils.actio
 import { webContainer } from "@core/di/web.container";
 import { FfmpegService } from "@services/media/ffmpeg.service";
 import type { Encoder, EncoderSettings, SourcePlan } from "@shared/types/ffmpeg.types";
+import type { FfprobeResult } from "@shared/types/ffprobe.types";
 import { waitProcessExits } from "@modules/process/process.async.actions";
 import { removeFileProcess, resetFileEncodes, setFileProcesses, setProcessProgress, updateFileEncode } from "@modules/encoder/encoder.reducer";
 import FilesService from "@services/files/files.service";
 import { PathService } from "@services/files/path.service";
-import type { Media } from "@components/internal/encoder/type";
 import { ProcessService } from "@services/common/process.service";
-import { DEFAULT_ENCODER_SETTINGS, ENCODER_PROFILES, getConvertedFilePath, getFinalFilePath, planSource } from "@shared/encoder/encoder.profiles";
+import {
+	DEFAULT_ENCODER_SETTINGS,
+	ENCODER_PROFILES,
+	findAvailablePath,
+	findOutputConflicts,
+	getConvertedFilePath,
+	getFinalFilePath,
+	getMainVideoIndex,
+	isFinalPathTaken,
+	planSource,
+} from "@shared/encoder/encoder.profiles";
 import type { ExtraArgument, StoreState } from "@store";
 
 const createAsyncThunk = createAsyncActionGenerator("encoder");
 
-export const encoderConvertStates = {
-	isConverting: false,
+/**
+ * One run of the Encoder. A cancelled run keeps its token cancelled even when a new run starts,
+ * so its last workers never pick up more work.
+ */
+type RunToken = { cancelled: boolean };
+
+let currentRun: RunToken | null = null;
+
+type Source = {
+	path: string;
+	/** Size read when the run starts, in bytes */
+	size: number;
+	/** Probe read when the run starts: a file converted by a previous run is seen as it is now */
+	probe: FfprobeResult;
 };
 
 type Job = {
-	media: Media;
+	source: Source;
 	plan: SourcePlan;
 	/** CQ/CRF from the analysis, null for a remux */
 	quality: number | null;
@@ -30,7 +52,8 @@ type Job = {
  * then the files are encoded a few at a time.
  */
 export const convertMedia = createAsyncThunk("convert", async (_, { getState, dispatch, extra }) => {
-	encoderConvertStates.isConverting = true;
+	const run: RunToken = { cancelled: false };
+	currentRun = run;
 
 	const state = getState();
 	const settings: EncoderSettings = state.config.current.encoder ?? DEFAULT_ENCODER_SETTINGS;
@@ -47,35 +70,54 @@ export const convertMedia = createAsyncThunk("convert", async (_, { getState, di
 
 	dispatch(resetFileEncodes());
 
+	const conflicts = findOutputConflicts(files.map((f) => f.file.path));
 	const jobs: Job[] = [];
 
 	// region Plan and analyze
-	for (const media of files) {
-		if (!encoderConvertStates.isConverting) break;
+	for (const { file } of files) {
+		if (run.cancelled) break;
 
-		const path = media.file.path;
-		const plan = planSource(media.property, path);
+		const path = file.path;
+		const conflict = conflicts.get(path);
+
+		if (conflict) {
+			dispatch(updateFileEncode({ path, phase: "skipped", note: conflict }));
+			continue;
+		}
+
+		const source = await readSource(path, ffmpegService);
+
+		if (!source) {
+			dispatch(updateFileEncode({ path, phase: "skipped", note: "File not found (already converted?)" }));
+			continue;
+		}
+
+		const plan = planSource(source.probe, path);
 
 		if (plan.action === "skip") {
 			dispatch(updateFileEncode({ path, phase: "skipped", note: plan.reason }));
 			continue;
 		}
 
+		if (isFinalPathTaken(path, await window.preload.ipc.send.file.exists(getFinalFilePath(path)))) {
+			dispatch(updateFileEncode({ path, phase: "skipped", note: `${getFinalFilePath(path)} already exists` }));
+			continue;
+		}
+
 		if (plan.action === "remux") {
 			dispatch(updateFileEncode({ path, phase: "pending", note: plan.reason }));
-			jobs.push({ media, plan, quality: null });
+			jobs.push({ source, plan, quality: null });
 			continue;
 		}
 
 		dispatch(updateFileEncode({ path, phase: "analyzing" }));
 
 		try {
-			const analysis = await ffmpegService.analyze({ input: path, duration: Number(media.property.format.duration), settings });
+			const analysis = await ffmpegService.analyze({ input: path, duration: Number(source.probe.format.duration), settings });
 			dispatch(updateFileEncode({ path, phase: "pending", quality: analysis.quality, xpsnr: analysis.xpsnr, targetReached: analysis.targetReached }));
-			jobs.push({ media, plan, quality: analysis.quality });
+			jobs.push({ source, plan, quality: analysis.quality });
 		} catch (e) {
-			const aborted = !encoderConvertStates.isConverting;
-			dispatch(updateFileEncode({ path, phase: aborted ? "aborted" : "failed", note: aborted ? undefined : errorMessage(e) }));
+			dispatch(updateFileEncode({ path, phase: run.cancelled ? "aborted" : "failed", note: run.cancelled ? undefined : errorMessage(e) }));
 		}
 	}
 	// endregion
@@ -85,20 +127,31 @@ export const convertMedia = createAsyncThunk("convert", async (_, { getState, di
 
 	await Promise.allSettled(
 		Array.from({ length: profile.fileParallelism }, async () => {
-			for (let job = queue.shift(); job && encoderConvertStates.isConverting; job = queue.shift()) {
+			for (let job = queue.shift(); job && !run.cancelled; job = queue.shift()) {
 				try {
-					await runJob(job, settings, { dispatch, getState, extra });
+					await runJob(job, settings, run, { dispatch, getState, extra });
 				} catch (e) {
-					const aborted = !encoderConvertStates.isConverting;
-					dispatch(updateFileEncode({ path: job.media.file.path, phase: aborted ? "aborted" : "failed", note: aborted ? undefined : errorMessage(e) }));
+					dispatch(updateFileEncode({ path: job.source.path, phase: run.cancelled ? "aborted" : "failed", note: run.cancelled ? undefined : errorMessage(e) }));
 				}
 			}
 		})
 	);
+
+	// Jobs left in the queue by a cancel
+	for (const job of queue) dispatch(updateFileEncode({ path: job.source.path, phase: "aborted" }));
 	// endregion
 
 	dispatch(removeFileProcess({ pids: getState().encoder.current.pids }));
+	if (currentRun === run) currentRun = null;
 });
+
+async function readSource(path: string, ffmpegService: FfmpegService): Promise<Source | null> {
+	if (!(await window.preload.ipc.send.file.exists(path))) return null;
+
+	const [probe, stats] = await Promise.all([ffmpegService.probe(path), window.preload.ipc.send.file.lstat(path)]);
+
+	return { path, size: stats.size, probe };
+}
 
 type ThunkApi = {
 	dispatch: (action: ReturnType<typeof updateFileEncode | typeof setFileProcesses | typeof setProcessProgress>) => unknown;
@@ -106,13 +159,14 @@ type ThunkApi = {
 	extra: ExtraArgument;
 };
 
-async function runJob({ media, plan, quality }: Job, settings: EncoderSettings, { dispatch, getState, extra }: ThunkApi) {
+async function runJob({ source, plan, quality }: Job, settings: EncoderSettings, run: RunToken, { dispatch, getState, extra }: ThunkApi) {
 	const ffmpegService = getService(FfmpegService, extra);
-	const fileService = getService(FilesService, extra);
-	const pathService = getService(PathService, extra);
+	const processService = getService(ProcessService, extra);
 
-	const path = media.file.path;
+	const { path, probe } = source;
 	const outputPath = getConvertedFilePath(path);
+	// Computed before ffmpeg starts: nothing may throw between its start and the wait for its exit
+	const nbFrames = ffmpegService.extractNbFrames(probe);
 
 	dispatch(updateFileEncode({ path, phase: plan.action === "remux" ? "remuxing" : "encoding" }));
 
@@ -120,19 +174,21 @@ async function runJob({ media, plan, quality }: Job, settings: EncoderSettings, 
 		settings,
 		quality,
 		files: { input: path, output: outputPath },
-		subtitleCodecs: media.property.streams.filter((s) => s.codec_type === "subtitle").map((s) => s.codec_name),
+		videoStreamIndex: getMainVideoIndex(probe),
+		subtitleCodecs: probe.streams.filter((s) => s.codec_type === "subtitle").map((s) => s.codec_name),
 	});
 
 	dispatch(setFileProcesses({ path, pid }));
 
-	const nbFrames = ffmpegService.extractNbFrames(media.property);
+	// Cancelled while ffmpeg was starting: the stop did not know this pid yet
+	if (run.cancelled) await processService.kill(pid);
 
 	const removeListener = window.preload.ipc.on.process.spawn.stderr((pid1, data) => {
-		if (pid1 !== pid) return;
+		if (pid1 !== pid || nbFrames === 0) return;
 
 		const frame = ffmpegService.extractNbFrameProcessed(data);
 
-		if (frame === null || nbFrames === 0) return;
+		if (frame === null) return;
 
 		dispatch(setProcessProgress({ path, value: Math.min(frame / nbFrames, 0.99) }));
 	});
@@ -146,28 +202,48 @@ async function runJob({ media, plan, quality }: Job, settings: EncoderSettings, 
 		removeListener();
 	}
 
-	if (!encoderConvertStates.isConverting) {
-		await deleteQuietly(outputPath);
-		return;
-	}
-
+	// ffmpeg exited successfully: the file is complete, it is kept even if the run was cancelled meanwhile
 	const outputSize = (await window.preload.ipc.send.file.lstat(outputPath)).size;
 
-	if (plan.action === "encode" && outputSize >= media.file.size) {
+	if (plan.action === "encode" && outputSize >= source.size) {
 		await deleteQuietly(outputPath);
 		dispatch(updateFileEncode({ path, phase: "skipped", note: "Larger than the source, original kept", outputSize }));
 		dispatch(setProcessProgress({ path, value: 1 }));
 		return;
 	}
 
-	// The original goes to old/, the converted file takes its place (always .mkv)
-	const oldDir = pathService.join(pathService.dirname(path), "old");
-	await fileService.ensureDir(oldDir);
-	await fileService.move(path, pathService.join(oldDir, pathService.filename(path)));
-	await fileService.move(outputPath, getFinalFilePath(path));
+	await replaceOriginal(path, outputPath, extra);
 
 	dispatch(updateFileEncode({ path, phase: "done", outputSize }));
 	dispatch(setProcessProgress({ path, value: 1 }));
+}
+
+/**
+ * Moves the original to `old/` (under a free name) and the converted file to the original path (as .mkv).
+ * If the second move fails, the original is put back.
+ */
+async function replaceOriginal(path: string, outputPath: string, extra: ExtraArgument) {
+	const fileService = getService(FilesService, extra);
+	const pathService = getService(PathService, extra);
+
+	const finalPath = getFinalFilePath(path);
+
+	if (isFinalPathTaken(path, await fileService.checkPathExists(finalPath))) {
+		throw new Error(`${finalPath} appeared during the encode, converted file left at ${outputPath}`);
+	}
+
+	const oldDir = pathService.join(pathService.dirname(path), "old");
+	await fileService.ensureDir(oldDir);
+	const oldPath = await findAvailablePath(pathService.join(oldDir, pathService.filename(path)), (candidate) => fileService.checkPathExists(candidate));
+
+	await fileService.move(path, oldPath);
+
+	try {
+		await fileService.move(outputPath, finalPath);
+	} catch (e) {
+		await fileService.move(oldPath, path);
+		throw e;
+	}
 }
 
 async function deleteQuietly(path: string) {
@@ -183,7 +259,7 @@ function errorMessage(e: unknown) {
 }
 
 export const stopConvertMedia = createAsyncThunk("stop-convert", async (_, { dispatch, getState, extra }) => {
-	encoderConvertStates.isConverting = false;
+	if (currentRun) currentRun.cancelled = true;
 
 	const ffmpegService = getService(FfmpegService, extra);
 	await ffmpegService.cancelAnalyses();
@@ -198,7 +274,7 @@ export const stopConvertMedia = createAsyncThunk("stop-convert", async (_, { dis
 	}
 
 	for (const [path, file] of Object.entries(state.encoder.processes.files)) {
-		if (file.phase === "analyzing" || file.phase === "encoding" || file.phase === "remuxing") {
+		if (file.phase === "analyzing" || file.phase === "encoding" || file.phase === "remuxing" || file.phase === "pending") {
 			dispatch(updateFileEncode({ path, phase: "aborted" }));
 		}
 	}

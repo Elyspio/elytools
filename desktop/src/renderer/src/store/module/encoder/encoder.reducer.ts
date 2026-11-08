@@ -41,6 +41,8 @@ export interface EncoderState {
 		encoders: Encoder[];
 	};
 	encoding: boolean;
+	/** A cancel is in progress: Encode stays disabled until the cancelled run has settled */
+	stopping: boolean;
 	current: {
 		pids: string[];
 	};
@@ -54,6 +56,7 @@ const defaultState: EncoderState = {
 		files: {},
 	},
 	encoding: false,
+	stopping: false,
 	current: {
 		pids: [],
 	},
@@ -100,13 +103,15 @@ const slice = createSlice({
 		});
 		builder.addCase(convertMedia.fulfilled, (state) => {
 			state.encoding = false;
+			state.stopping = false;
 		});
 		builder.addCase(convertMedia.rejected, (state) => {
 			state.encoding = false;
+			state.stopping = false;
 		});
 
 		builder.addCase(stopConvertMedia.pending, (state) => {
-			state.encoding = false;
+			if (state.encoding) state.stopping = true;
 		});
 	},
 });

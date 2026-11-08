@@ -8,6 +8,7 @@ import type { FfprobeResult } from "@shared/types/ffprobe.types";
 import os from "node:os";
 import path from "node:path";
 import fs from "node:fs";
+import { mapWithConcurrency } from "@shared/utils/concurrency";
 import {
 	buildConvertArgs,
 	buildSampleEncodeArgs,
@@ -22,21 +23,8 @@ import {
 /** Samples per analysis: the 12 NVENC sessions allowed by the driver, all at once */
 const SAMPLE_COUNT = 12;
 
-async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T, index: number) => Promise<R>): Promise<R[]> {
-	const results: R[] = Array.from({ length: items.length });
-	let next = 0;
-
-	const worker = async () => {
-		while (next < items.length) {
-			const index = next++;
-			results[index] = await fn(items[index], index);
-		}
-	};
-
-	await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
-
-	return results;
-}
+/** Another application (OBS, ShadowPlay…) may hold an NVENC session: such a sample is tried again once */
+const NVENC_SESSION_ERROR = /OpenEncodeSessionEx failed|incompatible client key|out of memory|No capable devices found/i;
 
 @injectable()
 export class FfmpegProcessModule extends LogModule {
@@ -160,8 +148,12 @@ export class FfmpegProcessModule extends LogModule {
 
 		try {
 			return await searchQuality(profile.qualityRange, getTargetXpsnr(opts.settings), async (quality) => {
-				const scores = await mapWithConcurrency(positions, profile.sampleParallelism, (start, index) =>
-					this.measureSample(opts, path.join(dir, `sample-${quality}-${index}.mkv`), start, quality, controller.signal)
+				// A failed sample aborts the controller: the other samples are killed and awaited before cleanup
+				const scores = await mapWithConcurrency(
+					positions,
+					profile.sampleParallelism,
+					(start, index) => this.measureSample(opts, path.join(dir, `sample-${quality}-${index}.mkv`), start, quality, controller.signal),
+					controller
 				);
 				const xpsnr = scores.reduce((acc, score) => acc + score, 0) / scores.length;
 				this.logger.info(`${profile.qualityLabel} ${quality}: XPSNR ${xpsnr.toFixed(2)} dB`, { input: opts.input });
@@ -169,7 +161,7 @@ export class FfmpegProcessModule extends LogModule {
 			});
 		} finally {
 			this.analyses.delete(controller);
-			await fs.promises.rm(dir, { recursive: true, force: true });
+			await fs.promises.rm(dir, { recursive: true, force: true, maxRetries: 5 }).catch((e) => this.logger.error("Failed to remove analysis samples", { dir, e }));
 		}
 	}
 
@@ -183,7 +175,14 @@ export class FfmpegProcessModule extends LogModule {
 	}
 
 	private async measureSample(opts: FfmpegAnalyzeOptions, sample: string, start: number, quality: number, signal: AbortSignal): Promise<number> {
-		const encode = await this.processModule.run("ffmpeg", buildSampleEncodeArgs(opts.input, sample, start, opts.settings, quality), signal);
+		const args = buildSampleEncodeArgs(opts.input, sample, start, opts.settings, quality);
+		let encode = await this.processModule.run("ffmpeg", args, signal);
+
+		if (encode.code !== 0 && NVENC_SESSION_ERROR.test(encode.stderr) && !signal.aborted) {
+			this.logger.info("NVENC session refused, sample tried again", { input: opts.input, start });
+			await new Promise((resolve) => setTimeout(resolve, 2000));
+			encode = await this.processModule.run("ffmpeg", args, signal);
+		}
 
 		if (encode.code !== 0) throw new Error(`Sample encoding failed (exit ${encode.code}): ${encode.stderr.slice(-500)}`);
 

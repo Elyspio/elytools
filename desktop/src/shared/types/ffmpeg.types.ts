@@ -49,6 +49,8 @@ export type FfmpegConvertOptions = {
 	settings: EncoderSettings;
 	/** CQ/CRF from the analysis; null copies the video stream (remux) */
 	quality: number | null;
+	/** Index of the main video among the video streams of the source (cover pictures come first in some files) */
+	videoStreamIndex: number;
 	/** Codecs of the source subtitle streams, in order (some need conversion to fit in MKV) */
 	subtitleCodecs: string[];
 };

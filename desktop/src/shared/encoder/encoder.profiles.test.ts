@@ -1,15 +1,25 @@
+import { spawnSync } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { describe, expect, it } from "vite-plus/test";
 import type { FfprobeResult } from "@shared/types/ffprobe.types";
-import type { EncoderSettings } from "@shared/types/ffmpeg.types";
+import type { EncoderSettings, FfmpegConvertOptions } from "@shared/types/ffmpeg.types";
 import {
 	buildConvertArgs,
+	buildSampleEncodeArgs,
 	buildSampleMetricArgs,
+	clampXpsnrTarget,
 	computeSamplePositions,
 	DEBAND_FILTER,
 	DEFAULT_ENCODER_SETTINGS,
+	findAvailablePath,
+	findOutputConflicts,
 	getConvertedFilePath,
 	getFinalFilePath,
+	getMainVideoIndex,
 	getTargetXpsnr,
+	isFinalPathTaken,
 	parseXpsnr,
 	planSource,
 	SAMPLE_EDGE_SKIP,
@@ -21,6 +31,9 @@ function probe(...streams: { codec_type: string; codec_name: string; attached_pi
 		streams: streams.map((s) => ({ codec_type: s.codec_type, codec_name: s.codec_name, disposition: { attached_pic: s.attached_pic ?? 0 } })),
 	} as unknown as FfprobeResult;
 }
+
+/** Value following `flag` in an argument list */
+const valueOf = (args: string[], flag: string) => args[args.indexOf(flag) + 1];
 
 describe("planSource", () => {
 	it("encodes an H.264 source", () => {
@@ -42,6 +55,13 @@ describe("planSource", () => {
 
 	it("skips a file without video", () => {
 		expect(planSource(probe({ codec_type: "audio", codec_name: "aac" }), "W:/a.mka").action).toBe("skip");
+	});
+});
+
+describe("getMainVideoIndex", () => {
+	it("points past a cover picture stored first", () => {
+		const source = probe({ codec_type: "audio", codec_name: "aac" }, { codec_type: "video", codec_name: "png", attached_pic: 1 }, { codec_type: "video", codec_name: "h264" });
+		expect(getMainVideoIndex(source)).toBe(1);
 	});
 });
 
@@ -98,66 +118,99 @@ describe("searchQuality", () => {
 
 describe("buildConvertArgs", () => {
 	const settings: EncoderSettings = { ...DEFAULT_ENCODER_SETTINGS };
-	const base = { files: { input: "in.mp4", output: "out.mkv" }, subtitleCodecs: [] as string[] };
+	const base: Omit<FfmpegConvertOptions, "settings" | "quality"> = { files: { input: "in.mp4", output: "out.mkv" }, subtitleCodecs: [], videoStreamIndex: 0 };
 
-	it("keeps every stream, copies audio and never forces the frame rate", () => {
+	it("keeps every stream, copies the rest and never forces the frame rate", () => {
 		const args = buildConvertArgs({ ...base, settings, quality: 30 });
 
-		expect(args).toEqual(expect.arrayContaining(["0:a?", "0:s?", "0:t?", "-map_chapters"]));
-		expect(args.slice(args.indexOf("-c"), args.indexOf("-c") + 2)).toEqual(["-c", "copy"]);
+		expect(args).toEqual(expect.arrayContaining(["0:v", "0:a?", "0:s?", "0:t?", "-map_chapters"]));
+		expect(valueOf(args, "-c")).toBe("copy");
 		expect(args).not.toContain("-r");
 		expect(args.slice(-3)).toEqual(["-f", "matroska", "out.mkv"]);
 	});
 
-	it("passes the CQ to NVENC", () => {
-		const args = buildConvertArgs({ ...base, settings, quality: 31 });
+	it("encodes only the main video, past a cover picture", () => {
+		const args = buildConvertArgs({ ...base, settings, quality: 31, videoStreamIndex: 1 });
 
-		expect(args.slice(args.indexOf("-cq"), args.indexOf("-cq") + 2)).toEqual(["-cq", "31"]);
-		expect(args).toContain("av1_nvenc");
+		expect(valueOf(args, "-c:v:1")).toBe("av1_nvenc");
+		expect(valueOf(args, "-pix_fmt:v:1")).toBe("p010le");
+		expect(valueOf(args, "-cq")).toBe("31");
+		expect(args).not.toContain("-c:v");
 	});
 
 	it("passes a CRF and no NVENC option to SVT-AV1", () => {
 		const args = buildConvertArgs({ ...base, settings: { ...settings, profile: "libsvtav1" }, quality: 26 });
 
-		expect(args.slice(args.indexOf("-crf"), args.indexOf("-crf") + 2)).toEqual(["-crf", "26"]);
+		expect(valueOf(args, "-crf")).toBe("26");
 		expect(args).not.toContain("-cq");
 		expect(args).not.toContain("-tune");
 	});
 
-	it("copies the video stream for a remux", () => {
+	it("clears the mkvmerge statistics of the encoded stream", () => {
+		const args = buildConvertArgs({ ...base, settings, quality: 30 });
+
+		expect(args).toEqual(expect.arrayContaining(["-metadata:s:v:0", "BPS=", "NUMBER_OF_BYTES=", "BPS-eng="]));
+	});
+
+	it("copies every stream as is for a remux", () => {
 		const args = buildConvertArgs({ ...base, settings: { ...settings, deband: true }, quality: null });
 
-		expect(args.slice(args.indexOf("-c:v"), args.indexOf("-c:v") + 2)).toEqual(["-c:v", "copy"]);
+		expect(args.filter((arg) => arg.startsWith("-c:v") || arg.startsWith("-metadata"))).toEqual([]);
 		expect(args).not.toContain(DEBAND_FILTER);
 	});
 
-	it("adds the deband filter when enabled", () => {
-		expect(buildConvertArgs({ ...base, settings: { ...settings, deband: true }, quality: 30 })).toContain(DEBAND_FILTER);
+	it("applies the deband filter to the main video only", () => {
+		const args = buildConvertArgs({ ...base, settings: { ...settings, deband: true }, quality: 30, videoStreamIndex: 1 });
+
+		expect(valueOf(args, "-filter:v:1")).toBe(DEBAND_FILTER);
+		expect(args).not.toContain("-vf");
 	});
 
 	it("converts MP4 text subtitles to SRT", () => {
 		const args = buildConvertArgs({ ...base, settings, quality: 30, subtitleCodecs: ["ass", "mov_text"] });
 
-		expect(args).toEqual(expect.arrayContaining(["-c:s:1", "srt"]));
+		expect(valueOf(args, "-c:s:1")).toBe("srt");
 		expect(args).not.toContain("-c:s:0");
 	});
 });
 
 describe("buildSampleMetricArgs", () => {
-	it("debands the reference when the deband filter is enabled", () => {
-		const lavfi = (deband: boolean) => {
-			const args = buildSampleMetricArgs("s.mkv", "in.mkv", 120, deband);
-			return args[args.indexOf("-lavfi") + 1];
-		};
+	const lavfi = (deband: boolean) => valueOf(buildSampleMetricArgs("s.mkv", "in.mkv", 120, deband), "-lavfi");
 
+	it("debands the reference when the deband filter is enabled", () => {
 		expect(lavfi(true)).toContain(`[1:v]${DEBAND_FILTER},`);
 		expect(lavfi(false)).not.toContain("libplacebo");
 	});
 
-	it("pairs frames by index, not by rounded MKV timestamps", () => {
-		const args = buildSampleMetricArgs("s.mkv", "in.mkv", 120, false);
+	it("gives both sides the same time base before pairing frames by index", () => {
+		expect(lavfi(false).match(/settb=1\/24,setpts=N/g)).toHaveLength(2);
+	});
+});
 
-		expect(args[args.indexOf("-lavfi") + 1].match(/setpts=N\/\(24\*TB\)/g)).toHaveLength(2);
+const hasFfmpeg = spawnSync("ffmpeg", ["-hide_banner", "-filters"], { encoding: "utf-8" }).stdout?.includes("xpsnr") ?? false;
+
+describe.skipIf(!hasFfmpeg)("XPSNR measure with ffmpeg", () => {
+	it("scores a lossless MKV sample of an MP4 source as identical", () => {
+		const dir = fs.mkdtempSync(path.join(os.tmpdir(), "elytools-xpsnr-test-"));
+		const source = path.join(dir, "source.mp4");
+		const sample = path.join(dir, "sample.mkv");
+		const run = (args: string[]) => spawnSync("ffmpeg", ["-hide_banner", "-v", "error", "-y", ...args], { encoding: "utf-8" });
+
+		try {
+			// 23.976 fps source in MP4 (1/24000 time base); the MKV sample uses 1/1000
+			expect(run(["-f", "lavfi", "-i", "testsrc2=size=320x180:rate=24000/1001:duration=8", "-c:v", "libx264", "-qp", "0", source]).status).toBe(0);
+			const ffv1 = buildSampleEncodeArgs(source, sample, 1.5, DEFAULT_ENCODER_SETTINGS, 30).map((arg) => (arg === "av1_nvenc" ? "ffv1" : arg));
+			const encoder = ffv1.indexOf("ffv1");
+			// Lossless encoder in place of NVENC: only the codec and its pixel format are kept
+			const args = [...ffv1.slice(0, encoder + 1), "-pix_fmt:v:0", "yuv420p", ...ffv1.slice(ffv1.indexOf("-an"))];
+			expect(spawnSync("ffmpeg", args, { encoding: "utf-8" }).status).toBe(0);
+
+			const metric = spawnSync("ffmpeg", buildSampleMetricArgs(sample, source, 1.5, false), { encoding: "utf-8" });
+
+			expect(parseXpsnr(metric.stderr)).toBe(100);
+		} finally {
+			fs.rmSync(dir, { recursive: true, force: true });
+		}
 	});
 });
 
@@ -175,15 +228,46 @@ describe("parseXpsnr", () => {
 	});
 });
 
-describe("quality target and paths", () => {
+describe("quality target", () => {
 	it("uses the preset target, or the custom value", () => {
 		expect(getTargetXpsnr(DEFAULT_ENCODER_SETTINGS)).toBe(42);
 		expect(getTargetXpsnr({ ...DEFAULT_ENCODER_SETTINGS, quality: "custom", customXpsnr: 41.5 })).toBe(41.5);
 	});
 
+	it("clamps a custom target typed halfway or out of range", () => {
+		expect(getTargetXpsnr({ ...DEFAULT_ENCODER_SETTINGS, quality: "custom", customXpsnr: 4 })).toBe(35);
+		expect(clampXpsnrTarget(120)).toBe(50);
+		expect(clampXpsnrTarget(Number.NaN)).toBe(42);
+	});
+});
+
+describe("output paths", () => {
 	it("always outputs MKV", () => {
-		expect(getConvertedFilePath("W:\\Anime\\ep.01.mp4")).toBe("W:\\Anime\\ep.01_converted.mkv");
 		expect(getFinalFilePath("W:\\Anime\\ep.01.mp4")).toBe("W:\\Anime\\ep.01.mkv");
 		expect(getFinalFilePath("/media/v1.0/episode")).toBe("/media/v1.0/episode.mkv");
+	});
+
+	it("gives sources with the same base name different temporary outputs", () => {
+		expect(getConvertedFilePath("W:/ep.mp4")).not.toBe(getConvertedFilePath("W:/ep.mkv"));
+	});
+
+	it("flags sources of the batch that would end at the same path", () => {
+		const conflicts = findOutputConflicts(["W:\\ep.mp4", "W:\\EP.mkv", "W:\\ep2.mkv"]);
+
+		expect([...conflicts.keys()]).toEqual(["W:\\ep.mp4", "W:\\EP.mkv"]);
+		expect(conflicts.get("W:\\ep.mp4")).toContain("EP.mkv");
+	});
+
+	it("only lets an MKV source be replaced by its own conversion", () => {
+		expect(isFinalPathTaken("W:/ep.mkv", true)).toBe(false);
+		expect(isFinalPathTaken("W:/ep.mp4", true)).toBe(true);
+		expect(isFinalPathTaken("W:/ep.mp4", false)).toBe(false);
+	});
+
+	it("never reuses the name of an archived original", async () => {
+		const taken = new Set(["W:/old/ep.mkv", "W:/old/ep (2).mkv"]);
+
+		expect(await findAvailablePath("W:/old/ep.mkv", async (p) => taken.has(p))).toBe("W:/old/ep (3).mkv");
+		expect(await findAvailablePath("W:/old/ep2.mkv", async (p) => taken.has(p))).toBe("W:/old/ep2.mkv");
 	});
 });

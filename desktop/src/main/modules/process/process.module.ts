@@ -46,12 +46,18 @@ export class ProcessModule extends LogModule {
 		return new Promise((resolve, reject) => {
 			const child = spawn(command, args, { stdio: ["ignore", "ignore", "pipe"], windowsHide: true, signal });
 			let stderr = "";
+			let error: Error | null = null;
 
 			child.stderr.on("data", (data: Buffer) => {
 				stderr = (stderr + data.toString("utf-8")).slice(-64 * 1024);
 			});
-			child.once("error", reject);
-			child.once("close", (code) => resolve({ code, stderr }));
+			child.once("error", (e) => {
+				// Not started (e.g. ffmpeg missing): no "close" will follow
+				if (child.pid === undefined) reject(e);
+				else error = e;
+			});
+			// Settles only once the process is gone, so callers can clean its files up safely
+			child.once("close", (code) => (error ? reject(error) : resolve({ code, stderr })));
 		});
 	}
 
@@ -85,6 +91,17 @@ export class ProcessModule extends LogModule {
 		});
 
 		return { pid: pid };
+	}
+
+	/**
+	 * Kills every process started with {@link spawn} (app quit).
+	 */
+	public killAll() {
+		for (const [pid, process] of this.cache) {
+			this.logger.info("Killing process on quit", { pid });
+			process.kill();
+		}
+		this.cache.clear();
 	}
 
 	kill(pid: string, signal: NodeJS.Signals | number) {

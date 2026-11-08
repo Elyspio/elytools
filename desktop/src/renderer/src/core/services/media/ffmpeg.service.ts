@@ -47,14 +47,14 @@ export class FfmpegService {
 		return denominator ? numerator / denominator : 0;
 	}
 
+	/**
+	 * Expected number of frames, 0 when unknown (no progress is shown then).
+	 */
 	public extractNbFrames(probe: FfprobeResult) {
 		const duration = Number(probe.format.duration); // in seconds
 		const fps = this.extractFps(probe);
+		const frames = Math.floor(duration * fps);
 
-		if (fps === 0) {
-			throw new Error("No video stream found");
-		}
-
-		return Math.floor(duration * fps);
+		return Number.isFinite(frames) && frames > 0 ? frames : 0;
 	}
 }
