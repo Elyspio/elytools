@@ -74,6 +74,10 @@ export const convertMedia = createAsyncThunk("convert", async (_, { getState, di
 	const jobs: Job[] = [];
 
 	// region Plan and analyze
+	const removeAnalyzeListener = window.preload.ipc.on.process.ffmpeg.analyzeProgress((analysis) => {
+		if (currentRun === run && !run.cancelled) dispatch(updateFileEncode({ path: analysis.input, analysis }));
+	});
+
 	for (const { file } of files) {
 		if (run.cancelled) break;
 
@@ -114,12 +118,14 @@ export const convertMedia = createAsyncThunk("convert", async (_, { getState, di
 
 		try {
 			const analysis = await ffmpegService.analyze({ input: path, duration: Number(source.probe.format.duration), settings });
-			dispatch(updateFileEncode({ path, phase: "pending", quality: analysis.quality, xpsnr: analysis.xpsnr, targetReached: analysis.targetReached }));
+			dispatch(updateFileEncode({ path, phase: "pending", analysis: undefined, quality: analysis.quality, xpsnr: analysis.xpsnr, targetReached: analysis.targetReached }));
 			jobs.push({ source, plan, quality: analysis.quality });
 		} catch (e) {
 			dispatch(updateFileEncode({ path, phase: run.cancelled ? "aborted" : "failed", note: run.cancelled ? undefined : errorMessage(e) }));
 		}
 	}
+
+	removeAnalyzeListener();
 	// endregion
 
 	// region Encode
@@ -254,8 +260,10 @@ async function deleteQuietly(path: string) {
 	}
 }
 
+/** Message of an error, without the wrapping Electron adds to errors thrown by the main process */
 function errorMessage(e: unknown) {
-	return e instanceof Error ? e.message : String(e);
+	const message = e instanceof Error ? e.message : String(e);
+	return message.replace(/^Error invoking remote method '[^']+': (Error: )?/, "");
 }
 
 export const stopConvertMedia = createAsyncThunk("stop-convert", async (_, { dispatch, getState, extra }) => {

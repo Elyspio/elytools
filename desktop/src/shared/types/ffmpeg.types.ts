@@ -32,6 +32,31 @@ export type FfmpegAnalyzeOptions = {
 	settings: EncoderSettings;
 };
 
+/** A finished round of the quality search */
+export type AnalyzeTrial = {
+	quality: number;
+	/** Mean XPSNR (luma, dB) of the samples */
+	xpsnr: number;
+	/** Whether the target is reached at this quality */
+	reached: boolean;
+};
+
+/** Sent by the main process after each sample step of an analysis */
+export type FfmpegAnalyzeProgress = {
+	input: string;
+	/** Round in progress (1-based): one CQ/CRF value measured per round */
+	round: number;
+	/** Rounds a binary search over the quality range needs at most */
+	maxRounds: number;
+	/** CQ/CRF measured by the round in progress */
+	quality: number;
+	samplesEncoded: number;
+	samplesMeasured: number;
+	samplesTotal: number;
+	/** Finished rounds, in order */
+	trials: AnalyzeTrial[];
+};
+
 export type FfmpegAnalyzeResult = {
 	/** CQ (NVENC) or CRF (SVT-AV1) reaching the target, clamped to the profile range */
 	quality: number;

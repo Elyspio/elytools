@@ -1,4 +1,4 @@
-import type { EncoderProfileId, EncoderSettings, FfmpegConvertOptions, QualityPresetId, SourcePlan } from "@shared/types/ffmpeg.types";
+import type { EncoderProfileId, EncoderSettings, FfmpegAnalyzeProgress, FfmpegConvertOptions, QualityPresetId, SourcePlan } from "@shared/types/ffmpeg.types";
 import type { FfprobeResult } from "@shared/types/ffprobe.types";
 
 export type EncoderProfile = {
@@ -186,6 +186,18 @@ export type QualitySearchResult = { quality: number; xpsnr: number; targetReache
  * Finds the highest quality value (smallest file) whose XPSNR still reaches the target.
  * XPSNR decreases when the quality value increases, so a binary search needs about log2(range) measures.
  */
+/** Rounds a binary search over the range needs at most */
+export function maxSearchRounds(range: { min: number; max: number }): number {
+	return Math.floor(Math.log2(range.max - range.min + 1)) + 1;
+}
+
+/** Share of an analysis done (0–1): every sample counts half when encoded, half when measured */
+export function analyzeProgressFraction(progress: FfmpegAnalyzeProgress): number {
+	const rounds = Math.max(progress.maxRounds, progress.round);
+	const roundShare = progress.samplesTotal > 0 ? (progress.samplesEncoded + progress.samplesMeasured) / (2 * progress.samplesTotal) : 0;
+	return Math.min(1, (progress.round - 1 + roundShare) / rounds);
+}
+
 export async function searchQuality(range: { min: number; max: number }, target: number, measure: (quality: number) => Promise<number>): Promise<QualitySearchResult> {
 	const cache = new Map<number, number>();
 	const measureOnce = async (quality: number) => {

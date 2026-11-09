@@ -163,6 +163,26 @@
 		}
 	}
 
+	&__trials {
+		flex-shrink: 0;
+		display: inline-flex;
+		gap: 10px;
+		white-space: nowrap;
+	}
+
+	&__trial {
+		cursor: help;
+
+		&--reached {
+			color: rgba(255, 255, 255, 0.7);
+		}
+
+		&--missed {
+			color: var(--text-faint);
+			text-decoration: line-through;
+		}
+	}
+
 	&__track {
 		position: absolute;
 		left: 0;

@@ -6,6 +6,7 @@
 import type { IpcMainInvokeEvent } from "electron";
 import type { UpdateStatus } from "@shared/types/update.types";
 import type { OidcAuthStatus } from "@shared/types/auth.types";
+import type { FfmpegAnalyzeProgress } from "@shared/types/ffmpeg.types";
 import type { SshCommandChunkEvent, SshCommandCompletedEvent, SshConnectionStatusEvent, SshTransferProgressEvent } from "@shared/types/ssh.types";
 
 export type IpcSentEvents = {
@@ -49,6 +50,11 @@ export type IpcSentEvents = {
 	 * @param code Code de sortie du process
 	 * @param signal Signal de sortie du process
 	 */
+	/**
+	 * Progression d'une analyse de qualité de l'encodeur, après chaque étape d'un échantillon
+	 */
+	"process:ffmpeg:analyze:progress": (event: IpcMainInvokeEvent, progress: FfmpegAnalyzeProgress) => void;
+
 	"process:spawn:exit": (event: IpcMainInvokeEvent, pid: string, code: number | null, signal: NodeJS.Signals | null) => void;
 	"ssh:connection:status": (event: IpcMainInvokeEvent, payload: SshConnectionStatusEvent) => void;
 	"ssh:transfer:progress": (event: IpcMainInvokeEvent, payload: SshTransferProgressEvent) => void;

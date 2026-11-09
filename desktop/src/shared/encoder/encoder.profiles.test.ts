@@ -21,6 +21,8 @@ import {
 	getTargetXpsnr,
 	isFinalPathTaken,
 	isVideoFile,
+	maxSearchRounds,
+	analyzeProgressFraction,
 	parseXpsnr,
 	planSource,
 	SAMPLE_EDGE_SKIP,
@@ -285,5 +287,24 @@ describe("isVideoFile", () => {
 		expect(isVideoFile("W:/Anime/S03E01 (CR).nfo")).toBe(false);
 		expect(isVideoFile("W:/Anime/S03E01.fr.srt")).toBe(false);
 		expect(isVideoFile("W:/Anime.mkv/README")).toBe(false);
+	});
+});
+
+describe("analysis progress", () => {
+	it("bounds the rounds of the binary search", () => {
+		expect(maxSearchRounds({ min: 22, max: 36 })).toBe(4);
+		expect(maxSearchRounds({ min: 16, max: 32 })).toBe(5);
+		expect(maxSearchRounds({ min: 30, max: 30 })).toBe(1);
+	});
+
+	const progress = { input: "ep.mkv", round: 2, maxRounds: 4, quality: 33, samplesEncoded: 12, samplesMeasured: 6, samplesTotal: 12, trials: [] };
+
+	it("counts each sample half when encoded, half when measured", () => {
+		expect(analyzeProgressFraction(progress)).toBeCloseTo((1 + 18 / 24) / 4);
+		expect(analyzeProgressFraction({ ...progress, round: 1, samplesEncoded: 0, samplesMeasured: 0 })).toBe(0);
+	});
+
+	it("stays within 0–1 when the fallback adds a round", () => {
+		expect(analyzeProgressFraction({ ...progress, round: 5, samplesMeasured: 12 })).toBe(1);
 	});
 });

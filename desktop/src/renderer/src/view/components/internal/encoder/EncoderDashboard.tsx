@@ -3,7 +3,7 @@ import { useAppSelector } from "@store";
 import { Tooltip } from "@mui/material";
 import { convertSizeToHumanFormat, formatSizeChange } from "@view/utils/data.utils";
 import type { EncodePhase, FileEncodeState } from "@modules/encoder/encoder.reducer";
-import { DEFAULT_ENCODER_SETTINGS, ENCODER_PROFILES } from "@shared/encoder/encoder.profiles";
+import { analyzeProgressFraction, DEFAULT_ENCODER_SETTINGS, ENCODER_PROFILES } from "@shared/encoder/encoder.profiles";
 import type { Media } from "@components/internal/encoder/type";
 
 /** Label and tone of each phase; the tone drives the dot, the label and the progress line */
@@ -85,7 +85,16 @@ function QueueRow({ media: { file }, state, progress, startedAt, qualityLabel }:
 		timing = `${formatDuration((elapsed / progress) * (1 - progress))} left`;
 	}
 
-	const fill = state.phase === "done" ? 1 : running ? progress : 0;
+	const analysis = state.phase === "analyzing" ? state.analysis : undefined;
+	const analyzed = analysis ? analyzeProgressFraction(analysis) : 0;
+
+	if (state.phase === "analyzing") {
+		timing = analysis
+			? `Round ${analysis.round}/${Math.max(analysis.maxRounds, analysis.round)} · testing ${qualityLabel} ${analysis.quality} · ${analysis.samplesMeasured}/${analysis.samplesTotal} samples measured`
+			: "Preparing samples…";
+	}
+
+	const fill = state.phase === "done" ? 1 : running ? progress : analysis ? analyzed : 0;
 
 	return (
 		<li className={`EncoderQueue__row EncoderQueue__row--${tone}`}>
@@ -96,7 +105,7 @@ function QueueRow({ media: { file }, state, progress, startedAt, qualityLabel }:
 				<span className="EncoderQueue__status">
 					<span className="EncoderQueue__dot" aria-hidden />
 					{label}
-					{running && <span className="EncoderQueue__percent">{Math.round(progress * 100)} %</span>}
+					{(running || analysis) && <span className="EncoderQueue__percent">{Math.round((running ? progress : analyzed) * 100)} %</span>}
 				</span>
 			</div>
 
@@ -119,7 +128,21 @@ function QueueRow({ media: { file }, state, progress, startedAt, qualityLabel }:
 						{state.note}
 					</span>
 				) : (
-					<span className="EncoderQueue__note">{timing}</span>
+					<span className="EncoderQueue__note" title={timing}>
+						{timing}
+					</span>
+				)}
+
+				{analysis && analysis.trials.length > 0 && (
+					<span className="EncoderQueue__trials">
+						{analysis.trials.map((trial) => (
+							<Tooltip key={trial.quality} title={`${qualityLabel} ${trial.quality}: ${trial.xpsnr.toFixed(2)} dB, target ${trial.reached ? "reached" : "missed"}`}>
+								<span className={`EncoderQueue__trial EncoderQueue__trial--${trial.reached ? "reached" : "missed"}`}>
+									{trial.quality} · {trial.xpsnr.toFixed(1)}
+								</span>
+							</Tooltip>
+						))}
+					</span>
 				)}
 
 				{state.quality !== undefined && state.xpsnr !== undefined && (
@@ -137,7 +160,7 @@ function QueueRow({ media: { file }, state, progress, startedAt, qualityLabel }:
 				)}
 			</div>
 
-			<div className={`EncoderQueue__track${state.phase === "analyzing" ? " EncoderQueue__track--scanning" : ""}`} aria-hidden>
+			<div className={`EncoderQueue__track${state.phase === "analyzing" && !analysis ? " EncoderQueue__track--scanning" : ""}`} aria-hidden>
 				<div className="EncoderQueue__fill" style={{ transform: `scaleX(${fill})` }} />
 			</div>
 		</li>

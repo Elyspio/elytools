@@ -1,6 +1,7 @@
 import { ipcRendererWrapper } from "./preload.ipc.wrapper";
 import type { UpdateStatus } from "@shared/types/update.types";
 import type { OidcAuthStatus } from "@shared/types/auth.types";
+import type { FfmpegAnalyzeProgress } from "@shared/types/ffmpeg.types";
 import { SshCommandChunkEvent, SshCommandCompletedEvent, SshConnectionStatusEvent, SshTransferProgressEvent } from "@shared/types/ssh.types";
 
 export function getIpcReceiver() {
@@ -22,6 +23,13 @@ export function getIpcReceiver() {
 			},
 		},
 		process: {
+			ffmpeg: {
+				analyzeProgress: (callback: (progress: FfmpegAnalyzeProgress) => void) => {
+					return ipcRendererWrapper.onAndGetRemover("process:ffmpeg:analyze:progress", (_, progress) => {
+						callback(progress);
+					});
+				},
+			},
 			spawn: {
 				stdout: (callback: (pid: string, data: string) => void | Promise<void>) => {
 					return ipcRendererWrapper.onAndGetRemover("process:spawn:stdout", (_, pid, data) => {

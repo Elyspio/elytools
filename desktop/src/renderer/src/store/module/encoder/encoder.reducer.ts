@@ -1,3 +1,4 @@
+import type { FfmpegAnalyzeProgress } from "@shared/types/ffmpeg.types";
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import { convertMedia, setupFfmpeg, stopConvertMedia } from "@modules/encoder/encoder.async.actions";
 import type { Encoder } from "@shared/types/ffmpeg.types";
@@ -14,6 +15,8 @@ export type FileEncodeState = {
 	xpsnr?: number;
 	/** Whether the XPSNR target was reached inside the quality range */
 	targetReached?: boolean;
+	/** Progress of the analysis in progress */
+	analysis?: FfmpegAnalyzeProgress;
 	/** Size of the converted file, in bytes */
 	outputSize?: number;
 };

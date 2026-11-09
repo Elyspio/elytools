@@ -2,8 +2,9 @@ import { LogModule } from "@main/modules/log.module";
 import { log } from "@main/utils/logs.utils";
 import { inject, injectable } from "inversify";
 import { ProcessModule } from "@main/modules/process/process.module";
+import { IpcModule } from "@main/modules/ipc.module";
 import { resultGuards } from "@shared/types/process.types";
-import type { Encoder, EncoderType, FfmpegAnalyzeOptions, FfmpegAnalyzeResult, FfmpegConvertOptions } from "@shared/types/ffmpeg.types";
+import type { Encoder, EncoderType, FfmpegAnalyzeOptions, FfmpegAnalyzeProgress, FfmpegAnalyzeResult, FfmpegConvertOptions } from "@shared/types/ffmpeg.types";
 import type { FfprobeResult } from "@shared/types/ffprobe.types";
 import os from "node:os";
 import path from "node:path";
@@ -16,6 +17,7 @@ import {
 	computeSamplePositions,
 	ENCODER_PROFILES,
 	getTargetXpsnr,
+	maxSearchRounds,
 	parseXpsnr,
 	searchQuality,
 } from "@shared/encoder/encoder.profiles";
@@ -30,6 +32,9 @@ const NVENC_SESSION_ERROR = /OpenEncodeSessionEx failed|incompatible client key|
 export class FfmpegProcessModule extends LogModule {
 	@inject(ProcessModule)
 	private readonly processModule!: ProcessModule;
+
+	@inject(IpcModule)
+	private readonly ipcModule!: IpcModule;
 
 	private readonly analyses = new Set<AbortController>();
 
@@ -146,17 +151,39 @@ export class FfmpegProcessModule extends LogModule {
 		this.analyses.add(controller);
 		const dir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "elytools-encoder-"));
 
+		const target = getTargetXpsnr(opts.settings);
+		const progress: FfmpegAnalyzeProgress = {
+			input: opts.input,
+			round: 0,
+			maxRounds: maxSearchRounds(profile.qualityRange),
+			quality: 0,
+			samplesEncoded: 0,
+			samplesMeasured: 0,
+			samplesTotal: positions.length,
+			trials: [],
+		};
+		const report = (update: Partial<FfmpegAnalyzeProgress>) => {
+			Object.assign(progress, update);
+			this.ipcModule.sendIpcToMainContent("process:ffmpeg:analyze:progress", { ...progress, trials: [...progress.trials] });
+		};
+
 		try {
-			return await searchQuality(profile.qualityRange, getTargetXpsnr(opts.settings), async (quality) => {
+			return await searchQuality(profile.qualityRange, target, async (quality) => {
+				report({ round: progress.round + 1, quality, samplesEncoded: 0, samplesMeasured: 0 });
+
 				// A failed sample aborts the controller: the other samples are killed and awaited before cleanup
 				const scores = await mapWithConcurrency(
 					positions,
 					profile.sampleParallelism,
-					(start, index) => this.measureSample(opts, path.join(dir, `sample-${quality}-${index}.mkv`), start, quality, controller.signal),
+					(start, index) =>
+						this.measureSample(opts, path.join(dir, `sample-${quality}-${index}.mkv`), start, quality, controller.signal, (step) =>
+							report(step === "encoded" ? { samplesEncoded: progress.samplesEncoded + 1 } : { samplesMeasured: progress.samplesMeasured + 1 })
+						),
 					controller
 				);
 				const xpsnr = scores.reduce((acc, score) => acc + score, 0) / scores.length;
 				this.logger.info(`${profile.qualityLabel} ${quality}: XPSNR ${xpsnr.toFixed(2)} dB`, { input: opts.input });
+				progress.trials.push({ quality, xpsnr, reached: xpsnr >= target });
 				return xpsnr;
 			});
 		} finally {
@@ -174,7 +201,14 @@ export class FfmpegProcessModule extends LogModule {
 		this.analyses.clear();
 	}
 
-	private async measureSample(opts: FfmpegAnalyzeOptions, sample: string, start: number, quality: number, signal: AbortSignal): Promise<number> {
+	private async measureSample(
+		opts: FfmpegAnalyzeOptions,
+		sample: string,
+		start: number,
+		quality: number,
+		signal: AbortSignal,
+		onStep: (step: "encoded" | "measured") => void
+	): Promise<number> {
 		const args = buildSampleEncodeArgs(opts.input, sample, start, opts.settings, quality);
 		let encode = await this.processModule.run("ffmpeg", args, signal);
 
@@ -185,11 +219,13 @@ export class FfmpegProcessModule extends LogModule {
 		}
 
 		if (encode.code !== 0) throw new Error(`Sample encoding failed (exit ${encode.code}): ${encode.stderr.slice(-500)}`);
+		onStep("encoded");
 
 		const metric = await this.processModule.run("ffmpeg", buildSampleMetricArgs(sample, opts.input, start, opts.settings.deband), signal);
 		const xpsnr = parseXpsnr(metric.stderr);
 
 		if (metric.code !== 0 || xpsnr === null) throw new Error(`XPSNR measure failed (exit ${metric.code}): ${metric.stderr.slice(-500)}`);
+		onStep("measured");
 
 		return xpsnr;
 	}
