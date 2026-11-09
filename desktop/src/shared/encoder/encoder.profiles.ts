@@ -331,6 +331,14 @@ export function getConvertedFilePath(filePath: string): string {
 /**
  * Final path of a converted file: the source path with an `.mkv` extension.
  */
+/** Video containers the encoder accepts: other files of a folder (.nfo, posters, subtitles…) are left out */
+export const VIDEO_EXTENSIONS = new Set(["mkv", "mp4", "m4v", "mov", "avi", "webm", "ts", "m2ts", "mts", "wmv", "flv", "mpg", "mpeg", "ogv", "3gp"]);
+
+export function isVideoFile(filePath: string): boolean {
+	const extension = /\.([^./\\]+)$/.exec(filePath)?.[1]?.toLowerCase();
+	return extension !== undefined && VIDEO_EXTENSIONS.has(extension);
+}
+
 export function getFinalFilePath(filePath: string): string {
 	return `${stripExtension(filePath)}.mkv`;
 }

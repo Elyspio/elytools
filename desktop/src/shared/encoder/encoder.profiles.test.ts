@@ -20,6 +20,7 @@ import {
 	getMainVideoIndex,
 	getTargetXpsnr,
 	isFinalPathTaken,
+	isVideoFile,
 	parseXpsnr,
 	planSource,
 	SAMPLE_EDGE_SKIP,
@@ -269,5 +270,20 @@ describe("output paths", () => {
 
 		expect(await findAvailablePath("W:/old/ep.mkv", async (p) => taken.has(p))).toBe("W:/old/ep (3).mkv");
 		expect(await findAvailablePath("W:/old/ep2.mkv", async (p) => taken.has(p))).toBe("W:/old/ep2.mkv");
+	});
+});
+
+describe("isVideoFile", () => {
+	it("keeps video containers, whatever the case", () => {
+		expect(isVideoFile("W:/Anime/S03E01 (CR).mkv")).toBe(true);
+		expect(isVideoFile("W:/Anime/ep.MP4")).toBe(true);
+		expect(isVideoFile("W:/Anime/ep.m2ts")).toBe(true);
+	});
+
+	it("leaves out the other files of a folder", () => {
+		expect(isVideoFile("W:/Anime/S03E01 (CR)-poster.jpg")).toBe(false);
+		expect(isVideoFile("W:/Anime/S03E01 (CR).nfo")).toBe(false);
+		expect(isVideoFile("W:/Anime/S03E01.fr.srt")).toBe(false);
+		expect(isVideoFile("W:/Anime.mkv/README")).toBe(false);
 	});
 });
