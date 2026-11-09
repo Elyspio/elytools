@@ -20,6 +20,7 @@ const v7: LocalConfigV7 = {
 	ssh: { machines: [], folders: [] },
 	llmUsage: { enabled: true, apiBaseUrl: "https://llm", machineName: "pc", authProfileId: "p1" },
 	torrent: { ...defaultTorrentConfiguration(), lastDownloadFolder: "W:/Torrents" },
+	updates: { autoCheck: false, channel: "dev" },
 };
 
 describe("ConfigMigrationModule", () => {
