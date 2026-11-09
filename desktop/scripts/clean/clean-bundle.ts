@@ -1,4 +1,4 @@
 import { rmSync } from "node:fs";
-import { outDir } from "../shared/release-utils";
+import path from "node:path";
 
-rmSync(outDir, { force: true, recursive: true });
+rmSync(path.resolve(import.meta.dirname, "../../out"), { force: true, recursive: true });

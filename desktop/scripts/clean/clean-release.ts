@@ -1,5 +1,7 @@
 import { rmSync } from "node:fs";
-import { distDir, outDir } from "../shared/release-utils";
+import path from "node:path";
 
-rmSync(outDir, { force: true, recursive: true });
-rmSync(distDir, { force: true, recursive: true });
+const desktopDir = path.resolve(import.meta.dirname, "../..");
+
+rmSync(path.join(desktopDir, "out"), { force: true, recursive: true });
+rmSync(path.join(desktopDir, "dist"), { force: true, recursive: true });

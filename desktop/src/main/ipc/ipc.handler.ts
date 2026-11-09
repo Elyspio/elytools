@@ -4,7 +4,7 @@ import { app, BrowserWindow, ipcMain, IpcMainInvokeEvent } from "electron";
 import { HIDDEN_ARG, WindowModule } from "../modules/window/window.module";
 import { ConfigModule } from "../modules/config/config.module";
 import si from "systeminformation";
-import { UpdateModule } from "../modules/update.module";
+import { UpdateModule } from "../modules/update/update.module";
 import { FileModule } from "../modules/file.module";
 import { mainContainer } from "@main/di/container.di";
 import { ProcessModule } from "@main/modules/process/process.module";
@@ -79,10 +79,6 @@ const ipcHandlers: IpcHandledEvents = {
 		const win = BrowserWindow.fromWebContents(event.sender)!;
 		win.hide();
 	},
-	"app:ipc:main-ready"() {
-		// noinspection JSIgnoredPromiseFromCall
-		void mainContainer.get(UpdateModule).checkForUpdates();
-	},
 	"app:launch-on-start-up:get"() {
 		const conf = app.getLoginItemSettings({});
 		return conf.openAtLogin;
@@ -138,8 +134,10 @@ const ipcHandlers: IpcHandledEvents = {
 	},
 	async "config:local:set"(_, config) {
 		// Profiles are owned by OidcModule (auth:profile:*) and the download folder by TorrentDownloadModule: a Settings draft must not bring back stale values.
-		const { auth, torrent } = await mainContainer.get(ConfigModule).getConfig();
+		const { auth, torrent, updates } = await mainContainer.get(ConfigModule).getConfig();
 		await mainContainer.get(ConfigModule).writeConfig({ ...config, auth: { ...config.auth, profiles: auth.profiles }, torrent });
+		// The check runs in the background: the save is acknowledged once written
+		void mainContainer.get(UpdateModule).onSettingsChanged(updates, config.updates);
 	},
 	async "dialog:selectDirectory"(_, returnFiles) {
 		return mainContainer.get(FileModule).getFolder({ returnFiles });
@@ -208,13 +206,13 @@ const ipcHandlers: IpcHandledEvents = {
 		return (si[key] as () => GetInformationResult[T])();
 	},
 	async "update:check"() {
-		await mainContainer.get(UpdateModule).checkForUpdates();
+		await mainContainer.get(UpdateModule).check();
 	},
 	"update:status:get"() {
 		return mainContainer.get(UpdateModule).getStatus();
 	},
-	async "update:download:start"() {
-		await mainContainer.get(UpdateModule).downloadUpdate();
+	async "update:download"() {
+		await mainContainer.get(UpdateModule).download();
 	},
 	"update:quit-and-install"() {
 		mainContainer.get(UpdateModule).quitAndInstall();

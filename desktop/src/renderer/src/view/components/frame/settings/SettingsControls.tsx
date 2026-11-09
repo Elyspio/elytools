@@ -1,5 +1,6 @@
-import { Box, InputBase, type InputBaseProps, Stack, Switch, Typography } from "@mui/material";
+import { Box, InputBase, type InputBaseProps, Stack, Typography } from "@mui/material";
 import React from "react";
+import "./SettingsControls.scss";
 
 type SettingsSectionProps = {
 	title: string;
@@ -24,10 +25,6 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({ title, descrip
 	</Stack>
 );
 
-export const SettingsCard: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className }) => (
-	<Box className={`Settings__card ${className ?? ""}`}>{children}</Box>
-);
-
 /**
  * Two columns of fields, a field with `wide` spans both
  */
@@ -50,26 +47,6 @@ export const SettingsField: React.FC<SettingsFieldProps> = ({ label, hint, wide,
 
 export const SettingsInput: React.FC<InputBaseProps & { mono?: boolean }> = ({ mono, className, ...props }) => (
 	<InputBase {...props} className={`Settings__input ${mono ? "Settings__input--mono" : ""} ${className ?? ""}`} />
-);
-
-type SettingsToggleProps = {
-	title: string;
-	description?: React.ReactNode;
-	checked: boolean;
-	onChange: (checked: boolean) => void;
-};
-
-/**
- * Option with its explanation on the left and its switch on the right
- */
-export const SettingsToggle: React.FC<SettingsToggleProps> = ({ title, description, checked, onChange }) => (
-	<label className="Settings__toggle">
-		<Box sx={{ flex: 1, minWidth: 0 }}>
-			<div className="Settings__toggle-title">{title}</div>
-			{description && <div className="Settings__hint">{description}</div>}
-		</Box>
-		<Switch checked={checked} onChange={(e) => onChange(e.target.checked)} />
-	</label>
 );
 
 type SettingsStatProps = {

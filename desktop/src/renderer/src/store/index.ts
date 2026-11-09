@@ -10,6 +10,7 @@ import { logErrorMiddleware } from "@store/middlewares/log-error.middleware";
 import { webContainer } from "@core/di/web.container";
 import { processSlice } from "@modules/process/process.reducer";
 import { sshReducer } from "@modules/ssh/ssh.reducer";
+import { updateReducer } from "@modules/update/update.reducer";
 
 const reducers = combineReducers({
 	config: configurationReducer,
@@ -18,6 +19,7 @@ const reducers = combineReducers({
 	process: processSlice.reducer,
 	torrent: torrentReducer,
 	ssh: sshReducer,
+	update: updateReducer,
 });
 
 export const store = configureStore({

@@ -111,25 +111,25 @@ export function getIpcSender() {
 		},
 		update: {
 			/**
-			 * Vérifie s'il y a une mise à jour disponible
+			 * Checks GitHub for a release of the selected channel
 			 */
 			check() {
 				return ipcRendererWrapper.invoke("update:check");
 			},
 			/**
-			 * État courant de la mise à jour automatique
+			 * Current state of the auto update
 			 */
 			status() {
 				return ipcRendererWrapper.invoke("update:status:get");
 			},
 			/**
-			 * Lance le téléchargement de la mise à jour
+			 * Downloads the release found (older release, development build)
 			 */
 			download() {
-				return ipcRendererWrapper.invoke("update:download:start");
+				return ipcRendererWrapper.invoke("update:download");
 			},
 			/**
-			 * Quitte l'application et installe la mise à jour
+			 * Restarts on the downloaded release
 			 */
 			quitAndInstall() {
 				return ipcRendererWrapper.invoke("update:quit-and-install");

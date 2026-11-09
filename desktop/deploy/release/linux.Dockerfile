@@ -1,3 +1,4 @@
+# Builds the Linux packages (AppImage, deb) from Windows: scripts/release/release.ts builds it from desktop/, mounts dist/ and runs it
 FROM node:26-bookworm
 
 ARG PNPM_VERSION=12.5.1
@@ -19,4 +20,7 @@ COPY . .
 
 RUN node ./node_modules/electron-builder/cli.js install-app-deps
 
-CMD ["./node_modules/.bin/tsx", "./scripts/build/build-release-linux-container.ts"]
+# electron-vite runs directly: `pnpm build` (prebuild) would empty the mounted dist/.
+# RELEASE_VERSION (development builds) sets the version of the packages without changing package.json
+ENV ELYTOOLS_DISABLE_MAIN_BYTECODE=1
+CMD ["sh", "-c", "pnpm exec electron-vite -c config/electron.vite.config.ts build && pnpm exec electron-builder --config config/electron-builder.yml --linux AppImage deb --publish never ${RELEASE_VERSION:+-c.extraMetadata.version=$RELEASE_VERSION}"]

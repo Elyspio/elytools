@@ -261,11 +261,17 @@
 	background-color: rgba(79, 210, 255, 0.04);
 	border: 1px solid rgba(79, 210, 255, 0.14);
 	min-height: 40px;
+
+	.AuthSettings__mono {
+		white-space: nowrap;
+	}
 }
 
 .AuthSettings__banner-label {
+	// Wraps in the narrow content of the Settings dialog: the URI and its buttons stay on one line
+	flex: 0 1 auto;
+	min-width: 0;
 	color: var(--text-muted);
-	white-space: nowrap;
 }
 
 .AuthSettings__picker {

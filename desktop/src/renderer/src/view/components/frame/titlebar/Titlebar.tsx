@@ -8,12 +8,13 @@ import SettingsIcon from "@mui/icons-material/Settings";
 import NavigateBefore from "@mui/icons-material/NavigateBefore";
 import Close from "@mui/icons-material/Close";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
-import Settings from "../settings/Settings";
+import { SettingsDialog } from "../settings/SettingsDialog";
 import { routes } from "@/config/routes.config";
 import { useLocation, useNavigate } from "react-router";
 import { useAppDispatch, useAppSelector } from "@store";
 import { closeSettings, openSettings } from "@modules/configuration/configuration.actions";
 import { sessionLabels, sessionState } from "../settings/AuthenticationSettings";
+import { selectPendingUpdate } from "@modules/update/update.selectors";
 
 interface Props {
 	title?: string;
@@ -24,8 +25,7 @@ const Titlebar: React.FC<Props> = ({ title, subtitle }) => {
 	const [fullscreen, setFullscreen] = useState<boolean>();
 	const dispatch = useAppDispatch();
 	const settings = useAppSelector((state) => state.config.settings);
-	const updateStatus = useAppSelector((state) => state.config.update);
-	const pendingUpdate = updateStatus?.state === "available" || updateStatus?.state === "downloaded" ? updateStatus : null;
+	const pendingUpdate = useAppSelector(selectPendingUpdate);
 	const profiles = useAppSelector((state) => state.config.current.auth?.profiles);
 	const authStatuses = useAppSelector((state) => state.config.authStatuses);
 	const failingProfiles = (profiles ?? [])
@@ -37,7 +37,7 @@ const Titlebar: React.FC<Props> = ({ title, subtitle }) => {
 	}, []);
 
 	const toggleModal = () => {
-		dispatch(settings.open ? closeSettings() : openSettings(pendingUpdate ? "updates" : undefined));
+		dispatch(settings.open ? closeSettings() : openSettings());
 	};
 
 	const close = () => {
@@ -110,7 +110,13 @@ const Titlebar: React.FC<Props> = ({ title, subtitle }) => {
 				)}
 
 				<Tooltip
-					title={pendingUpdate ? `Elytools ${pendingUpdate.latestVersion} ${pendingUpdate.state === "downloaded" ? "ready to install" : "available"}` : "Settings"}
+					title={
+						pendingUpdate
+							? pendingUpdate.downgrade && pendingUpdate.state === "available"
+								? `Older version ${pendingUpdate.latestVersion} available`
+								: `Elytools ${pendingUpdate.latestVersion} ready to install`
+							: "Settings"
+					}
 					placement={"bottom"}
 				>
 					<IconButton className={"Titlebar__control"} onClick={toggleModal}>
@@ -132,7 +138,7 @@ const Titlebar: React.FC<Props> = ({ title, subtitle }) => {
 					<Close sx={{ fontSize: 16 }} />
 				</IconButton>
 			</Stack>
-			<Settings close={() => dispatch(closeSettings())} isOpen={settings.open} initialSection={settings.section} />
+			<SettingsDialog />
 		</Stack>
 	);
 };

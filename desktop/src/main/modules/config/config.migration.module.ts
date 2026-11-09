@@ -14,6 +14,8 @@ import type {
 	LocalConfigV6,
 	TorrentConfiguration,
 } from "@shared/config/app.config";
+import { readUpdateSettings } from "@shared/config/app.config";
+import { app } from "electron";
 import { log } from "../../utils/logs.utils";
 
 /**
@@ -70,6 +72,7 @@ export class ConfigMigrationModule extends LogModule {
 			...this.toV6(conf),
 			version: 7,
 			torrent: defaultTorrentConfiguration(),
+			updates: readUpdateSettings(undefined, app.getVersion()),
 		};
 	}
 

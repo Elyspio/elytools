@@ -27,10 +27,6 @@ export interface IpcHandledEvents {
 	"app:close": (event: IpcMainInvokeEvent) => void;
 	"app:context-menu": (event: IpcMainInvokeEvent) => void;
 	"app:hide": (event: IpcMainInvokeEvent) => void;
-	/**
-	 * Indique que la main window est prête à recevoir des événements
-	 */
-	"app:ipc:main-ready": (event: IpcMainInvokeEvent) => void;
 	"app:launch-on-start-up:get": (event: IpcMainInvokeEvent) => boolean;
 	"app:launch-on-start-up:set": (event: IpcMainInvokeEvent, value: boolean) => Promise<void>;
 	"app:reload": (event: IpcMainInvokeEvent) => Promise<void>;
@@ -112,16 +108,16 @@ export interface IpcHandledEvents {
 		pathSeparator: string;
 	}>;
 	/**
-	 * Lance la vérification de s'il y a une mise à jour disponible
+	 * Checks GitHub for a release of the selected channel
 	 */
 	"update:check": (event: IpcMainInvokeEvent) => Promise<void>;
 	"update:status:get": (event: IpcMainInvokeEvent) => UpdateStatus;
 	/**
-	 * Lance le téléchargement de la mise à jour
+	 * Downloads the release found: automatic for a newer release, on the user's request for an older one (and in development)
 	 */
-	"update:download:start": (event: IpcMainInvokeEvent) => Promise<void>;
+	"update:download": (event: IpcMainInvokeEvent) => Promise<void>;
 	/**
-	 * Quitte l'application et installe la mise à jour
+	 * Restarts on the downloaded release
 	 */
 	"update:quit-and-install": (event: IpcMainInvokeEvent) => void;
 	/**

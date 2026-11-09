@@ -3,6 +3,7 @@ import { mainConfig } from "@shared/config/main.config";
 export function getPreloadConfig() {
 	return {
 		appName: mainConfig.names.public,
+		releasesUrl: mainConfig.autoUpdate.releasesUrl,
 		protocol: mainConfig.names.protocol,
 		region: mainConfig.names.client,
 		frameColor: mainConfig.colors.frame,

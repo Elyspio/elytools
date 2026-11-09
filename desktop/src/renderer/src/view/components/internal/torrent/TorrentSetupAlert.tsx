@@ -2,7 +2,7 @@ import { Alert, Button } from "@mui/material";
 import AlertTitle from "@mui/material/AlertTitle";
 import { useAppDispatch, useAppSelector } from "@store";
 import { openSettings } from "@modules/configuration/configuration.actions";
-import type { SettingsSectionKey } from "@components/frame/settings/Settings";
+import type { SettingsSectionKey } from "@components/frame/settings/SettingsDialog";
 import { profileIssue, sessionState } from "@components/frame/settings/AuthenticationSettings";
 
 type SetupIssue = {

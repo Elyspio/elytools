@@ -32,7 +32,6 @@ Configure your service endpoints and authentication profiles in **Settings**. So
 | -------------------- | ------------------------------------------------------------- |
 | `pnpm dev`           | Start Electron in development mode with rebuild watching.     |
 | `pnpm build`         | Clear `out/` and `dist/`, then build the application bundles. |
-| `pnpm build:bundle`  | Build application bundles without the cleanup step.           |
 | `pnpm start`         | Preview the built application.                                |
 | `pnpm check`         | Run the Vite+ checks with automatic fixes (`vp check --fix`). |
 | `pnpm exec vp check` | Run checks without automatic fixes.                           |
@@ -58,10 +57,8 @@ config/
 └── electron-builder.yml      # Installers and update publishing
 deploy/release/               # Linux builder container
 scripts/
-├── build/                    # Bundles and platform packages
 ├── clean/                    # Build output cleanup
-├── publish/                  # GitHub release publishing
-└── shared/                   # Release helpers
+└── release/                  # Packages and GitHub releases (stable and development builds)
 src/
 ├── main/                     # Electron entry point, modules, and IPC
 ├── preload/                  # Renderer-facing Electron bridge
@@ -93,7 +90,7 @@ This resolution is implemented in [main.context.module.ts](src/main/modules/cont
 
 ### Settings schema
 
-The current configuration schema is **version 6**. Existing configuration versions are migrated on load. See [app.config.ts](src/shared/config/app.config.ts) for the complete model.
+The current configuration schema is **version 7**. Existing configuration versions are migrated on load. See [app.config.ts](src/shared/config/app.config.ts) for the complete model.
 
 | Setting                                       | Purpose                                                                         |
 | --------------------------------------------- | ------------------------------------------------------------------------------- |
@@ -104,6 +101,7 @@ The current configuration schema is **version 6**. Existing configuration versio
 | `auth.profiles`, `auth.redirectPath`          | Named OIDC providers and the shared callback path.                              |
 | `ssh.machines`, `ssh.folders`                 | Saved machine definitions and their organization.                               |
 | `llmUsage`                                    | Usage reporting toggle, monitor URL, machine label, and authentication profile. |
+| `updates`                                     | Automatic update checks and the release channel (`stable` or `dev`).            |
 
 ### Authentication and torrent workflow
 
@@ -118,32 +116,22 @@ The qBittorrent integration expects an endpoint that accepts the OIDC bearer tok
 
 ## Release workflow
 
-### Build packages
+Releases are built on Windows with Docker or Podman running and an authenticated `gh` (`gh auth login`). The Windows installer is built on the host, the AppImage and Debian packages in the container of [deploy/release](deploy/release), both in parallel. See [release.ts](scripts/release/release.ts).
 
-```bash
-pnpm build:release:win
-pnpm build:release:linux
-```
+| Command              | Purpose                                                                                                                                                                                       |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm release`       | Publishes the version of `package.json` (`x.y.z`) from an up to date `main`: checks and tests, builds, pushes the tag `vx.y.z`, creates the release with notes generated from the merged PRs. |
+| `pnpm release:dev`   | Publishes a development build `x.y.z-dev.n` from any clean, pushed branch, as a GitHub prerelease. `package.json` is unchanged; every development build is kept.                              |
+| `pnpm package`       | Builds both platforms into `dist/` without publishing.                                                                                                                                        |
+| `pnpm package:linux` | Builds the Linux packages only.                                                                                                                                                               |
 
-The Windows build creates an NSIS installer on the host. The Linux build uses Podman when available, otherwise Docker, and creates AppImage and Debian packages. Artifacts are written to `dist/`.
+### Auto update
 
-Run the Windows build first when building both platforms manually: it clears `out/` and `dist/` before building.
+The application follows the GitHub releases (electron-updater with a release provider reading the releases feed). In **Settings › Updates**:
 
-### Publish a release
-
-Set `GITHUB_TOKEN` or `GH_TOKEN` in the host environment with access to the configured GitHub release repository, then publish the artifacts already in `dist/`:
-
-```bash
-pnpm publish:release
-```
-
-The combined workflow runs checks, builds Windows and Linux packages in parallel, and publishes the resulting artifacts:
-
-```bash
-pnpm release
-```
-
-Publishing uses the version from [package.json](package.json) and the GitHub destination in [electron-builder.yml](config/electron-builder.yml).
+- **Channel**: `Stable` follows the releases, `Dev` also the development builds; the highest version wins.
+- **Automatic updates**: checks at startup then every hour, downloads a newer release and installs it on restart or when the application quits.
+- Switching from `Dev` back to `Stable` offers the older stable release; it is only downloaded and installed on request.
 
 ## Runtime and debugging
 
