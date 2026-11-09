@@ -24,6 +24,8 @@ export class UpdateModule extends LogModule {
 	private settings: UpdateSettings | null = null;
 	private checkTimeout: NodeJS.Timeout | undefined;
 	private downloadCancellation: CancellationToken | null = null;
+	/** Check in progress: electron-updater hands it back to a new check, a channel change waits for it */
+	private checking: Promise<void> | null = null;
 	private status: UpdateStatus = {
 		state: "idle",
 		currentVersion: app.getVersion(),
@@ -96,6 +98,8 @@ export class UpdateModule extends LogModule {
 		this.applySettings(next);
 
 		if (previous.channel !== next.channel) {
+			// A check of the previous channel still running would give its release to the next check: wait, then forget it
+			await this.checking;
 			this.dropPendingUpdate();
 			if (next.autoCheck) await this.check();
 			else this.schedule();
@@ -113,6 +117,16 @@ export class UpdateModule extends LogModule {
 	public async check() {
 		if (!canCheck(this.status.state)) return;
 
+		const checking = this.runCheck();
+		this.checking = checking;
+		try {
+			await checking;
+		} finally {
+			if (this.checking === checking) this.checking = null;
+		}
+	}
+
+	private async runCheck() {
 		try {
 			const result = await this.autoUpdater.checkForUpdates();
 			// Development builds without dev-app-update.yml resolve without any event

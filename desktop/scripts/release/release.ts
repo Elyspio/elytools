@@ -270,7 +270,7 @@ async function packageLinux(runtime = process.platform === "linux" ? null : cont
 			"run",
 			"--rm",
 			"--volume",
-			`${distDir.replaceAll("\\", "/")}:/project/dist`,
+			`${distDir.replaceAll("\\", "/")}:/project/desktop/dist`,
 			"--volume",
 			`${linuxImage}-cache:/root/.cache`,
 			...(version ? ["--env", `RELEASE_VERSION=${version}`] : []),

@@ -136,7 +136,8 @@ const ipcHandlers: IpcHandledEvents = {
 		// Profiles are owned by OidcModule (auth:profile:*) and the download folder by TorrentDownloadModule: a Settings draft must not bring back stale values.
 		const { auth, torrent, updates } = await mainContainer.get(ConfigModule).getConfig();
 		await mainContainer.get(ConfigModule).writeConfig({ ...config, auth: { ...config.auth, profiles: auth.profiles }, torrent });
-		await mainContainer.get(UpdateModule).onSettingsChanged(updates, config.updates);
+		// The check runs in the background: the save is acknowledged once written
+		void mainContainer.get(UpdateModule).onSettingsChanged(updates, config.updates);
 	},
 	async "dialog:selectDirectory"(_, returnFiles) {
 		return mainContainer.get(FileModule).getFolder({ returnFiles });

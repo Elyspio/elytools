@@ -1,4 +1,4 @@
-import { CancellationToken, type CustomPublishOptions, type GithubOptions, HttpError, newError, parseXml } from "builder-util-runtime";
+import { CancellationToken, type CustomPublishOptions, type GithubOptions, HttpError, newError, parseXml, type XElement } from "builder-util-runtime";
 import type { AppUpdater } from "electron-updater";
 import { computeReleaseNotes, GitHubProvider } from "electron-updater/out/providers/GitHubProvider";
 import { parseUpdateInfo, type ProviderRuntimeOptions } from "electron-updater/out/providers/Provider";
@@ -16,7 +16,9 @@ const tagRegExp = /\/tag\/(v?[^/]+)$/;
  * The GitHub provider only follows the releases of one prerelease channel: here a channel also follows the more stable
  * releases (dev → stable) and the highest version wins ({@link pickReleaseTag}). Every release ships
  * latest*.yml (scripts/release/release.ts), downloads and SHA-512 checks are unchanged. The Atom feed can list tags
- * whose release is still a draft: only versions with publicly downloadable update metadata are offered.
+ * whose release is still a draft: only versions with publicly downloadable update metadata are offered. The feed only
+ * lists the 10 latest releases: without a stable release among them (development builds published since), the latest
+ * stable release comes from `/releases/latest`.
  */
 export function releaseProvider(owner: string, repo: string, getChannel: () => UpdateChannel): CustomPublishOptions {
 	class ReleaseProvider extends GitHubProvider {
@@ -38,10 +40,19 @@ export function releaseProvider(owner: string, repo: string, getChannel: () => U
 				cancellationToken
 			);
 			const feed = parseXml(feedXml ?? "");
-			const releases = feed.getElements("entry").flatMap((entry) => {
+			const releases: { tag: string; entry: XElement | null }[] = feed.getElements("entry").flatMap((entry) => {
 				const tag = tagRegExp.exec(entry.element("link").attribute("href"))?.[1];
 				return tag ? [{ tag, entry }] : [];
 			});
+			if (
+				pickReleaseTag(
+					releases.map((release) => release.tag),
+					"stable"
+				) === null
+			) {
+				const latestStable = await this.latestStableTag(cancellationToken);
+				if (latestStable) releases.push({ tag: latestStable, entry: null });
+			}
 
 			const channelFile = `${this.getDefaultChannelName()}.yml`;
 			const channel = getChannel();
@@ -64,11 +75,26 @@ export function releaseProvider(owner: string, repo: string, getChannel: () => U
 					continue;
 				}
 				const info = parseUpdateInfo(rawData, channelFile, channelFileUrl);
-				info.releaseName ??= release.entry.elementValueOrEmpty("title");
-				info.releaseNotes ??= computeReleaseNotes(this.appUpdater.currentVersion, this.appUpdater.fullChangelog, feed, release.entry);
+				info.releaseName ??= release.entry?.elementValueOrEmpty("title") ?? release.tag;
+				if (release.entry) info.releaseNotes ??= computeReleaseNotes(this.appUpdater.currentVersion, this.appUpdater.fullChangelog, feed, release.entry);
 				return { tag: release.tag, ...info };
 			}
 			throw newError("No published versions on GitHub", "ERR_UPDATER_NO_PUBLISHED_VERSIONS");
+		}
+
+		/**
+		 * Tag of the latest stable release (GitHub excludes the prereleases and the drafts), null without any
+		 */
+		private async latestStableTag(cancellationToken: CancellationToken): Promise<string | null> {
+			try {
+				const rawData = await this.httpRequest(newUrlFromBase(`${this.releasesPath}/latest`, this.baseUrl), { accept: "application/json" }, cancellationToken);
+				const tag = rawData ? (JSON.parse(rawData) as { tag_name?: unknown }).tag_name : null;
+				return typeof tag === "string" ? tag : null;
+			} catch (error) {
+				// No stable release yet: 404, or 406 for the JSON answer
+				if (error instanceof HttpError && (error.statusCode === 404 || error.statusCode === 406)) return null;
+				throw error;
+			}
 		}
 	}
 

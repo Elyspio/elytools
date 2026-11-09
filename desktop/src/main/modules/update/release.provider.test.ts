@@ -91,6 +91,27 @@ describe("release provider", () => {
 		await expect(instance.getLatestVersion()).rejects.toMatchObject({ code: "ERR_UPDATER_INVALID_UPDATE_INFO" });
 	});
 
+	it("takes the latest stable release outside the feed when only development builds are listed", async () => {
+		const devBuilds = Array.from({ length: 10 }, (_, i) => `v0.5.0-dev.${10 - i}`);
+		const { instance, request } = provider(devBuilds, {
+			"/o/r/releases/latest": JSON.stringify({ tag_name: "v0.4.0" }),
+			"/o/r/releases/download/v0.4.0/latest.yml": updateInfo("0.4.0"),
+		});
+		await expect(instance.getLatestVersion()).resolves.toMatchObject({ tag: "v0.4.0", version: "0.4.0", releaseName: "v0.4.0" });
+		expect(request.mock.calls.map(([options]) => options.path)).toEqual(["/o/r/releases.atom", "/o/r/releases/latest", "/o/r/releases/download/v0.4.0/latest.yml"]);
+	});
+
+	it("does not ask for the latest stable release when the feed lists one", async () => {
+		const { instance, request } = provider(["v0.5.0-dev.1", "v0.4.0"], { "/o/r/releases/download/v0.5.0-dev.1/latest.yml": updateInfo("0.5.0-dev.1") }, "dev");
+		await expect(instance.getLatestVersion()).resolves.toMatchObject({ version: "0.5.0-dev.1" });
+		expect(request.mock.calls.map(([options]) => options.path)).not.toContain("/o/r/releases/latest");
+	});
+
+	it.each([404, 406])("reports no published versions without any stable release (HTTP %i)", async (statusCode) => {
+		const { instance } = provider(["v0.5.0-dev.1"], { "/o/r/releases/latest": new HttpError(statusCode) });
+		await expect(instance.getLatestVersion()).rejects.toMatchObject({ code: "ERR_UPDATER_NO_PUBLISHED_VERSIONS" });
+	});
+
 	it("retries the latest tag on the next check after a draft is published", async () => {
 		const assets = {
 			"/o/r/releases/download/v0.4.1/latest.yml": new HttpError(404) as string | Error,
