@@ -208,7 +208,10 @@ async function runJob({ source, plan, quality }: Job, settings: EncoderSettings,
 		removeListener();
 	}
 
-	// ffmpeg exited successfully: the file is complete, it is kept even if the run was cancelled meanwhile
+	// ffmpeg exited successfully: the file is complete, it is kept even if the run was cancelled meanwhile.
+	// Without its statistics tags, Explorer and Jellyfin show no video bitrate: a failure only costs these tags.
+	await window.preload.ipc.send.process.ffmpeg.writeStatistics(outputPath, getMainVideoIndex(probe)).catch((e) => console.warn("Video statistics not written", outputPath, e));
+
 	const outputSize = (await window.preload.ipc.send.file.lstat(outputPath)).size;
 
 	if (plan.action === "encode" && outputSize >= source.size) {

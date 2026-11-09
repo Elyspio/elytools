@@ -7,7 +7,10 @@ import type { FfprobeResult } from "@shared/types/ffprobe.types";
 import type { EncoderSettings, FfmpegConvertOptions } from "@shared/types/ffmpeg.types";
 import {
 	buildConvertArgs,
+	buildPacketSizesArgs,
 	buildSampleEncodeArgs,
+	buildStatisticsArgs,
+	computeVideoStatistics,
 	buildSampleMetricArgs,
 	clampXpsnrTarget,
 	computeSamplePositions,
@@ -306,5 +309,40 @@ describe("analysis progress", () => {
 
 	it("stays within 0–1 when the fallback adds a round", () => {
 		expect(analyzeProgressFraction({ ...progress, round: 5, samplesMeasured: 12 })).toBe(1);
+	});
+});
+
+describe("video statistics", () => {
+	it("sums the packet sizes over the duration", () => {
+		expect(computeVideoStatistics("1000\r\n3000\r\n\r\n", 2)).toEqual({ bps: 16000, bytes: 4000, frames: 2 });
+		expect(computeVideoStatistics("", 2)).toBeNull();
+		expect(computeVideoStatistics("1000", Number.NaN)).toBeNull();
+	});
+
+	it("tags the main video stream of the copy", () => {
+		const args = buildStatisticsArgs("in.mkv", "out.mkv", 1, { bps: 2_500_000, bytes: 440_000_000, frames: 34_048 });
+		expect(args).toEqual(expect.arrayContaining(["-map", "0", "-c", "copy", "-metadata:s:v:1", "BPS=2500000", "-metadata:s:v:1", "NUMBER_OF_FRAMES=34048"]));
+		expect(args.slice(-3)).toEqual(["-f", "matroska", "out.mkv"]);
+	});
+
+	it.skipIf(!hasFfmpeg)("writes tags ffprobe reads back", () => {
+		const dir = fs.mkdtempSync(path.join(os.tmpdir(), "elytools-stats-test-"));
+		try {
+			const input = path.join(dir, "in.mkv");
+			const output = path.join(dir, "out.mkv");
+			const ffmpeg = (args: string[]) => spawnSync("ffmpeg", ["-hide_banner", "-v", "error", ...args], { encoding: "utf-8" });
+			const ffprobe = (args: string[]) => spawnSync("ffprobe", args, { encoding: "utf-8" });
+
+			expect(ffmpeg(["-f", "lavfi", "-i", "testsrc2=size=320x180:rate=24:duration=2", "-c:v", "libx264", input]).status).toBe(0);
+
+			const statistics = computeVideoStatistics(ffprobe(buildPacketSizesArgs(input, 0)).stdout, 2);
+			expect(statistics?.frames).toBe(48);
+
+			expect(ffmpeg(buildStatisticsArgs(input, output, 0, statistics!)).status).toBe(0);
+			const tags = ffprobe(["-v", "error", "-select_streams", "v:0", "-show_entries", "stream_tags=BPS,NUMBER_OF_FRAMES", "-of", "csv=p=0", output]).stdout.trim();
+			expect(tags).toBe(`${statistics!.bps},48`);
+		} finally {
+			fs.rmSync(dir, { recursive: true, force: true });
+		}
 	});
 });

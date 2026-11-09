@@ -57,6 +57,9 @@ export function getIpcSender() {
 				analyze: async (opts: FfmpegAnalyzeOptions): Promise<FfmpegAnalyzeResult> => {
 					return await ipcRendererWrapper.invoke("process:ffmpeg:analyze", opts);
 				},
+				writeStatistics: async (file: string, videoStreamIndex: number) => {
+					return await ipcRendererWrapper.invoke("process:ffmpeg:statistics", file, videoStreamIndex);
+				},
 				cancelAnalyses: async () => {
 					return await ipcRendererWrapper.invoke("process:ffmpeg:analyze:cancel");
 				},

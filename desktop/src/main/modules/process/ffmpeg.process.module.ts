@@ -13,7 +13,10 @@ import { mapWithConcurrency } from "@shared/utils/concurrency";
 import {
 	buildConvertArgs,
 	buildSampleEncodeArgs,
+	buildPacketSizesArgs,
 	buildSampleMetricArgs,
+	buildStatisticsArgs,
+	computeVideoStatistics,
 	computeSamplePositions,
 	ENCODER_PROFILES,
 	getTargetXpsnr,
@@ -190,6 +193,32 @@ export class FfmpegProcessModule extends LogModule {
 			this.analyses.delete(controller);
 			await fs.promises.rm(dir, { recursive: true, force: true, maxRetries: 5 }).catch((e) => this.logger.error("Failed to remove analysis samples", { dir, e }));
 		}
+	}
+
+	/**
+	 * Writes the statistics tags of the video stream in a converted file: measured from its packets,
+	 * then the file is copied with the tags and replaces the original.
+	 */
+	@log((file: string) => `file=${file}`)
+	public async writeStatistics(file: string, videoStreamIndex: number): Promise<void> {
+		const packets = await this.processModule.run("ffprobe", buildPacketSizesArgs(file, videoStreamIndex));
+		const format = await this.processModule.run("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", file]);
+		const statistics = computeVideoStatistics(packets.stdout, Number.parseFloat(format.stdout));
+
+		if (packets.code !== 0 || format.code !== 0 || !statistics) {
+			throw new Error(`Video statistics unavailable: ${(packets.stderr || format.stderr).slice(-300)}`);
+		}
+
+		const tagged = `${file}.stats.mkv`;
+		const copy = await this.processModule.run("ffmpeg", buildStatisticsArgs(file, tagged, videoStreamIndex, statistics));
+
+		if (copy.code !== 0) {
+			await fs.promises.rm(tagged, { force: true });
+			throw new Error(`Writing the video statistics failed (exit ${copy.code}): ${copy.stderr.slice(-300)}`);
+		}
+
+		await fs.promises.rename(tagged, file);
+		this.logger.info("Video statistics written", { file, ...statistics });
 	}
 
 	/**

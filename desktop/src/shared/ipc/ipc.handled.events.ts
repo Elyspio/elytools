@@ -94,6 +94,11 @@ export interface IpcHandledEvents {
 	"process:ffmpeg:analyze": (event: IpcMainInvokeEvent, opts: FfmpegAnalyzeOptions) => Promise<FfmpegAnalyzeResult>;
 
 	/**
+	 * Écrit les statistiques du flux vidéo (débit, octets, images) dans un fichier converti, en place
+	 */
+	"process:ffmpeg:statistics": (event: IpcMainInvokeEvent, file: string, videoStreamIndex: number) => Promise<void>;
+
+	/**
 	 * Arrête les analyses en cours
 	 */
 	"process:ffmpeg:analyze:cancel": (event: IpcMainInvokeEvent) => void;

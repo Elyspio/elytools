@@ -188,6 +188,9 @@ const ipcHandlers: IpcHandledEvents = {
 	"process:ffmpeg:analyze"(_, opts): Promise<FfmpegAnalyzeResult> {
 		return mainContainer.get(FfmpegProcessModule).analyze(opts);
 	},
+	"process:ffmpeg:statistics"(_, file, videoStreamIndex): Promise<void> {
+		return mainContainer.get(FfmpegProcessModule).writeStatistics(file, videoStreamIndex);
+	},
 	"process:ffmpeg:analyze:cancel"(): void {
 		mainContainer.get(FfmpegProcessModule).cancelAnalyses();
 	},

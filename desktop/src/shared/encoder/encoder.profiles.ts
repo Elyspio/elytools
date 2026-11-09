@@ -233,6 +233,48 @@ const MAP_ARGS = ["-map", "0:v", "-map", "0:a?", "-map", "0:s?", "-map", "0:t?",
  */
 const SOURCE_STATISTICS_TAGS = ["BPS", "NUMBER_OF_BYTES", "NUMBER_OF_FRAMES", "_STATISTICS_TAGS", "_STATISTICS_WRITING_APP", "_STATISTICS_WRITING_DATE_UTC"];
 
+/** Video statistics written in the output, read by Windows Explorer ("Data rate") and Jellyfin like the mkvmerge ones */
+export type VideoStatistics = {
+	/** Mean bitrate, in bits per second */
+	bps: number;
+	bytes: number;
+	frames: number;
+};
+
+/** ffprobe arguments listing the packet sizes of a video stream, one per line */
+export function buildPacketSizesArgs(input: string, videoStreamIndex: number): string[] {
+	return ["-v", "error", "-select_streams", `v:${videoStreamIndex}`, "-show_entries", "packet=size", "-of", "csv=p=0", input];
+}
+
+/**
+ * Statistics of a video stream from its packet sizes (ffprobe csv output) and the duration of the file, in seconds
+ */
+export function computeVideoStatistics(packetSizes: string, duration: number): VideoStatistics | null {
+	const sizes = packetSizes
+		.split(/\r?\n/)
+		.map((line) => Number.parseInt(line, 10))
+		.filter((size) => Number.isFinite(size));
+	if (sizes.length === 0 || !(duration > 0)) return null;
+
+	const bytes = sizes.reduce((acc, size) => acc + size, 0);
+	return { bps: Math.round((bytes * 8) / duration), bytes, frames: sizes.length };
+}
+
+/**
+ * Copy of a converted file with the statistics tags of its video stream (ffmpeg does not write them)
+ */
+export function buildStatisticsArgs(input: string, output: string, videoStreamIndex: number, statistics: VideoStatistics): string[] {
+	const stream = `-metadata:s:v:${videoStreamIndex}`;
+	const tags = {
+		BPS: statistics.bps,
+		NUMBER_OF_BYTES: statistics.bytes,
+		NUMBER_OF_FRAMES: statistics.frames,
+		_STATISTICS_TAGS: "BPS DURATION NUMBER_OF_FRAMES NUMBER_OF_BYTES",
+		_STATISTICS_WRITING_APP: "Elytools",
+	};
+	return ["-hide_banner", "-y", "-i", input, "-map", "0", "-c", "copy", ...Object.entries(tags).flatMap(([tag, value]) => [stream, `${tag}=${value}`]), "-f", "matroska", output];
+}
+
 /**
  * Full conversion: keeps every stream, encodes the main video only, copies everything else, outputs MKV.
  * The source frame rate is kept.

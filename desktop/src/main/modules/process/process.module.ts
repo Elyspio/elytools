@@ -39,15 +39,19 @@ export class ProcessModule extends LogModule {
 
 	/**
 	 * Runs a command to completion without forwarding its output to the renderer.
-	 * Only the end of stderr is kept (summary lines such as the ffmpeg metrics).
+	 * Only the end of stderr is kept (summary lines such as the ffmpeg metrics); stdout is kept whole.
 	 */
 	@log.debug()
-	public async run(command: string, args: string[], signal?: AbortSignal): Promise<{ code: number | null; stderr: string }> {
+	public async run(command: string, args: string[], signal?: AbortSignal): Promise<{ code: number | null; stdout: string; stderr: string }> {
 		return new Promise((resolve, reject) => {
-			const child = spawn(command, args, { stdio: ["ignore", "ignore", "pipe"], windowsHide: true, signal });
+			const child = spawn(command, args, { stdio: ["ignore", "pipe", "pipe"], windowsHide: true, signal });
+			let stdout = "";
 			let stderr = "";
 			let error: Error | null = null;
 
+			child.stdout.on("data", (data: Buffer) => {
+				stdout += data.toString("utf-8");
+			});
 			child.stderr.on("data", (data: Buffer) => {
 				stderr = (stderr + data.toString("utf-8")).slice(-64 * 1024);
 			});
@@ -57,7 +61,7 @@ export class ProcessModule extends LogModule {
 				else error = e;
 			});
 			// Settles only once the process is gone, so callers can clean its files up safely
-			child.once("close", (code) => (error ? reject(error) : resolve({ code, stderr })));
+			child.once("close", (code) => (error ? reject(error) : resolve({ code, stdout, stderr })));
 		});
 	}
 
