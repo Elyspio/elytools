@@ -68,6 +68,7 @@ Cached JSON at `%LOCALAPPDATA%/elytools/config/` (Linux: `~/.config/elytools/con
 
 ## Development Workflow
 - Make sure to run pnpm check / fmt before committing.
+- After pushing a desktop change, publish a development build (`pnpm release:dev`) unless the thread explicitly asks not to: see @AGENTS.md.
 
 ## Git & Release Conventions
 - No `Co-Authored-By` trailer (nor any AI attribution line such as « Generated with Claude Code ») in commit messages, PR descriptions or squash merge messages.
