@@ -3,8 +3,9 @@ import { createAsyncActionGenerator, getServices } from "../../utils/utils.actio
 import { addProcessStd, completeProcess } from "@modules/process/process.actions";
 import { LatestConfig } from "@shared/config/app.config";
 import { SystemService } from "@services/system/system.service";
-import { setAuthStatuses, setSystemInformation, setUpdateStatus } from "@modules/configuration/configuration.actions";
+import { setAuthStatuses, setSystemInformation } from "@modules/configuration/configuration.actions";
 import { initSsh } from "@modules/ssh/ssh.async.actions";
+import { initUpdate } from "@modules/update/update.async.actions";
 
 const createAsyncThunk = createAsyncActionGenerator("configuration");
 
@@ -93,8 +94,7 @@ export const initApp = createAsyncThunk("init-app", async (_, { dispatch }) => {
 	await dispatch(initSsh());
 	// dispatch(watchWindowResize());
 
-	window.preload.ipc.on.update.status((status) => dispatch(setUpdateStatus(status)));
-	dispatch(setUpdateStatus(await window.preload.ipc.send.update.status()));
+	await dispatch(initUpdate());
 
 	window.preload.ipc.on.auth.oidc.status((statuses) => dispatch(setAuthStatuses(statuses)));
 	void dispatch(refreshAuthStatuses());

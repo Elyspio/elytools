@@ -41,11 +41,6 @@ export const appIpcSender = {
 			await ipcRendererWrapper.invoke("app:launch-on-start-up:set", value);
 		},
 	},
-	ready: {
-		ipc: async () => {
-			await ipcRendererWrapper.invoke("app:ipc:main-ready");
-		},
-	},
 	getPublicVersion: () => {
 		return app.getVersion();
 	},

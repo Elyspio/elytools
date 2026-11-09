@@ -1,8 +1,11 @@
+const repository = { owner: "Elyspio", repo: "elytools" };
+
 export const autoUpdate = {
-	/**
-	 * Délai en minutes entre les checks de mise à jour
-	 */
-	checkDelay: 60, // 1h
+	/** Minutes between two update checks */
+	checkDelay: 60,
+	/** GitHub repository of the releases (also in config/electron-builder.yml) */
+	repository,
+	releasesUrl: `https://github.com/${repository.owner}/${repository.repo}/releases`,
 };
 
 export const ports = {

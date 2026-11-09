@@ -149,6 +149,31 @@ export type LocalConfigV6 = Omit<LocalConfigV5, "version" | "endpoints" | "llmUs
 export type LocalConfigV7 = Omit<LocalConfigV6, "version"> & {
 	version: 7;
 	torrent: TorrentConfiguration;
+	/** Added without a config version: filled by {@link readUpdateSettings} when missing */
+	updates: UpdateSettings;
 };
+
+/** Releases followed by the auto update: stable only, or also the development builds (x.y.z-dev.n) */
+export type UpdateChannel = "stable" | "dev";
+
+export type UpdateSettings = {
+	/** Checks GitHub for a new release at startup then periodically, and downloads it */
+	autoCheck: boolean;
+	channel: UpdateChannel;
+};
+
+/**
+ * Channel of an installed version: a development build (x.y.z-dev.n) follows the development builds
+ */
+export function channelOfVersion(version: string): UpdateChannel {
+	return /^\d+\.\d+\.\d+-dev\./.test(version) ? "dev" : "stable";
+}
+
+/**
+ * Update settings of a saved configuration: without any, checks are on and the channel is the one of the installed version
+ */
+export function readUpdateSettings(saved: Partial<UpdateSettings> | undefined, currentVersion: string): UpdateSettings {
+	return { autoCheck: true, channel: channelOfVersion(currentVersion), ...saved };
+}
 
 export type WindowPosition = Pick<BrowserWindowConstructorOptions, "x" | "y" | "width" | "height">;

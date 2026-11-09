@@ -5,7 +5,7 @@ import { installExtension, REACT_DEVELOPER_TOOLS, REDUX_DEVTOOLS } from "@chriss
 import { registerIpcHandlers } from "@main/ipc/ipc.handler";
 import { mainContainer } from "@main/di/container.di";
 import { WindowModule } from "@main/modules/window/window.module";
-import { UpdateModule } from "@main/modules/update.module";
+import { UpdateModule } from "@main/modules/update/update.module";
 import { RequestInterceptionModule } from "@main/modules/request/interception.request.module";
 import { DeeplinkModule } from "@main/modules/deeplink.module";
 import { MainContextModule } from "@main/modules/context/main.context.module";
@@ -56,8 +56,8 @@ if (hasSingleInstanceLock) {
 		mainContainer.get(LlmUsageModule).start();
 		mainContainer.get(OidcModule).startHealthChecks();
 
-		// The window may already be shown (or start hidden in the tray): check now, then every hour
-		void mainContainer.get(UpdateModule).checkForUpdates();
+		// The window may already be shown (or start hidden in the tray): check now when enabled, then every hour
+		void mainContainer.get(UpdateModule).start();
 
 		app.on("activate", function () {
 			// On macOS it's common to re-create a window in the app when the

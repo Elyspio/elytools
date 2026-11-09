@@ -1,13 +1,12 @@
 import { createSlice } from "@reduxjs/toolkit";
 import { reloadConfig, setConfig } from "./configuration.async.actions";
 import { ConfigurationState } from "@modules/configuration/configuration.types";
-import { closeSettings, openSettings, setAuthStatuses, setSystemInformation, setUpdateStatus } from "@modules/configuration/configuration.actions";
+import { closeSettings, openSettings, setAuthStatuses, setSystemInformation } from "@modules/configuration/configuration.actions";
 
 const initialState: ConfigurationState = {
 	current: {} as ConfigurationState["current"],
 	isWindowUnderSized: false,
 	system: {},
-	update: null,
 	authStatuses: [],
 	settings: { open: false },
 };
@@ -27,10 +26,6 @@ export const slice = createSlice({
 
 		builder.addCase(setSystemInformation, (state, action) => {
 			state.system = action.payload;
-		});
-
-		builder.addCase(setUpdateStatus, (state, action) => {
-			state.update = action.payload;
 		});
 
 		builder.addCase(setAuthStatuses, (state, action) => {

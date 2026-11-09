@@ -1,6 +1,6 @@
 {
 	"name": "elytools",
-	"version": "1.14.0",
+	"version": "2.0.0",
 	"description": "An Electron application with React and TypeScript",
 	"author": "jona.guich69@gmail.com",
 	"repository": {
@@ -19,12 +19,10 @@
 		"dev": "electron-vite -c config/electron.vite.config.ts dev -w",
 		"prebuild": "rimraf out dist",
 		"build": "electron-vite -c config/electron.vite.config.ts build",
-		"build:bundle": "tsx ./scripts/build/build-bundle.ts",
-		"build:release:win": "tsx ./scripts/build/build-release-win.ts",
-		"build:release:linux": "tsx ./scripts/build/build-release-linux.ts",
-		"build:release:linux:container": "tsx ./scripts/build/build-release-linux-container.ts",
-		"publish:release": "tsx ./scripts/publish/publish-release.ts",
-		"release": "vp check && concurrently -n windows,linux \"pnpm run build:release:win\" \"pnpm run build:release:linux\" && pnpm run publish:release"
+		"package": "node scripts/release/release.ts package",
+		"package:linux": "node scripts/release/release.ts package-linux",
+		"release": "node scripts/release/release.ts",
+		"release:dev": "node scripts/release/release.ts dev"
 	},
 	"dependencies": {
 		"@chrissantamaria/electron-devtools-installer": "4.0.0-fork.1",
@@ -44,6 +42,7 @@
 		"@tsed/logger": "^8.0.5",
 		"@types/ssh2": "^1.15.6",
 		"@vitejs/plugin-react": "^6.1.1",
+		"builder-util-runtime": "9.7.0",
 		"class-transformer": "^0.5.1",
 		"class-validator": "0.15.1",
 		"dayjs": "^1.11.23",
@@ -61,6 +60,7 @@
 		"redux-logger": "^3.0.6",
 		"reflect-metadata": "^0.2.2",
 		"rxjs": "^7.8.2",
+		"semver": "^7.8.6",
 		"ssh2": "^1.17.0",
 		"systeminformation": "^5.33.13",
 		"vite-plugin-svgr": "^5.2.0",
@@ -74,7 +74,7 @@
 		"@types/react-dom": "^19.3.0",
 		"@types/react-syntax-highlighter": "^15.5.13",
 		"@types/redux-logger": "^3.0.13",
-		"concurrently": "^10.0.5",
+		"@types/semver": "^7.8.0",
 		"electron": "^44.4.3",
 		"electron-builder": "^26.15.3",
 		"electron-vite": "^6.0.0-beta.1",

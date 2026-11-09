@@ -1,7 +1,8 @@
 import { LogModule } from "../log.module";
 import path from "path";
 import * as fs from "node:fs";
-import type { LatestConfig, LocalConfig } from "@shared/config/app.config";
+import { type LatestConfig, type LocalConfig, readUpdateSettings } from "@shared/config/app.config";
+import { app } from "electron";
 import { MainContextModule } from "../context/main.context.module";
 import { ConfigMigrationModule, defaultAuthConfiguration, defaultLlmUsageConfiguration, defaultTorrentConfiguration } from "./config.migration.module";
 import { SecureStorageModule } from "../security/secure-storage.module";
@@ -58,7 +59,7 @@ export class ConfigModule extends LogModule {
 			return this.configCache!;
 		}
 
-		this.configCache = parsedConfig;
+		this.configCache = { ...parsedConfig, updates: readUpdateSettings(parsedConfig.updates, app.getVersion()) };
 
 		return this.configCache;
 	}
@@ -133,6 +134,7 @@ export class ConfigModule extends LogModule {
 			},
 			llmUsage: defaultLlmUsageConfiguration(),
 			torrent: defaultTorrentConfiguration(),
+			updates: readUpdateSettings(undefined, app.getVersion()),
 		};
 	}
 }

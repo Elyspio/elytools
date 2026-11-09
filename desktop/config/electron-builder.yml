@@ -29,11 +29,13 @@ linux:
     category: Utility
 appImage:
     artifactName: ${name}-${version}.${ext}
+# Auto update (electron-updater) from the GitHub releases: generates app-update.yml and the latest*.yml files.
+# Builds never publish (--publish never): scripts/release/release.ts creates the release with gh.
 publish:
     provider: github
     owner: Elyspio
     repo: elytools
-    releaseType: release
+    releaseType: draft
 electronFuses:
     # Enable ASAR integrity validation
     enableEmbeddedAsarIntegrityValidation: true

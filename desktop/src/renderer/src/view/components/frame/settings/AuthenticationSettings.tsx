@@ -283,8 +283,6 @@ type AuthenticationSettingsProps = {
 	profiles: OidcProfile[];
 	statuses: OidcAuthStatus[];
 	bindings: Record<AuthModuleName, string | null>;
-	/** Saves the Settings draft, so the login uses the redirect path on screen */
-	beforeLogin: () => Promise<void>;
 	onProfilesChange: () => Promise<void>;
 	refreshStatuses: () => Promise<void>;
 };
@@ -297,13 +295,13 @@ export const AuthenticationSettings: React.FC<AuthenticationSettingsProps> = ({
 	profiles,
 	statuses,
 	bindings,
-	beforeLogin,
 	onProfilesChange,
 	refreshStatuses,
 }) => {
 	const [expandedId, setExpandedId] = useState<string | null>(null);
 	const [loggingInProfileId, setLoggingInProfileId] = useState<string | null>(null);
 	const [isEditingRedirect, setIsEditingRedirect] = useState(false);
+	const [redirectDraft, setRedirectDraft] = useState(redirectPath);
 
 	const redirectUri = `elytools://${redirectPath.replace(/^\//, "")}`;
 
@@ -311,7 +309,6 @@ export const AuthenticationSettings: React.FC<AuthenticationSettingsProps> = ({
 		async (profileId: string) => {
 			setLoggingInProfileId(profileId);
 			try {
-				await beforeLogin();
 				await window.preload.ipc.send.auth.oidc.startLogin(profileId);
 				await refreshStatuses();
 				toast.success("Signed in");
@@ -321,7 +318,7 @@ export const AuthenticationSettings: React.FC<AuthenticationSettingsProps> = ({
 				setLoggingInProfileId(null);
 			}
 		},
-		[beforeLogin, refreshStatuses]
+		[refreshStatuses]
 	);
 
 	const logout = useCallback(
@@ -408,7 +405,7 @@ export const AuthenticationSettings: React.FC<AuthenticationSettingsProps> = ({
 					{isEditingRedirect ? (
 						<Stack direction="row" spacing={0.5} sx={{ alignItems: "center", flex: 1 }}>
 							<span className="AuthSettings__mono AuthSettings__faint">elytools://</span>
-							<SettingsInput mono className="AuthSettings__inline-input" value={redirectPath} onChange={(e) => onRedirectPathChange(e.target.value)} autoFocus />
+							<SettingsInput mono className="AuthSettings__inline-input" value={redirectDraft} onChange={(e) => setRedirectDraft(e.target.value)} autoFocus />
 						</Stack>
 					) : (
 						<>
@@ -421,7 +418,16 @@ export const AuthenticationSettings: React.FC<AuthenticationSettingsProps> = ({
 							<Box sx={{ flex: 1 }} />
 						</>
 					)}
-					<Button size="small" className="AuthSettings__neutral-btn" onClick={() => setIsEditingRedirect((prev) => !prev)}>
+					<Button
+						size="small"
+						className="AuthSettings__neutral-btn"
+						onClick={() => {
+							// Saved when done editing
+							if (isEditingRedirect && redirectDraft !== redirectPath) onRedirectPathChange(redirectDraft);
+							else if (!isEditingRedirect) setRedirectDraft(redirectPath);
+							setIsEditingRedirect((prev) => !prev);
+						}}
+					>
 						{isEditingRedirect ? "Done" : "Edit"}
 					</Button>
 				</Box>
