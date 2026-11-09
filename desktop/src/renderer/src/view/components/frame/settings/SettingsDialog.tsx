@@ -83,7 +83,11 @@ export function SettingsDialog() {
 	const save = (updater: (config: LatestConfig) => LatestConfig) => {
 		dispatch(setConfig(updater(config)))
 			.unwrap()
-			.catch((error: Error) => toast.error(error.message));
+			.catch((error: Error) => {
+				toast.error(error.message);
+				// The store took the value when the save started: back to the configuration actually written
+				void dispatch(reloadConfig());
+			});
 	};
 
 	const setEndpoint = <K extends "homeAssistant" | "api">(field: K, value: string) => save((c) => ({ ...c, endpoints: { ...c.endpoints, [field]: value } }));
