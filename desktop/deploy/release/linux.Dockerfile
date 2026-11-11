@@ -1,7 +1,7 @@
 # Builds the Linux packages (AppImage, deb) from Windows: scripts/release/release.ts builds it from desktop/, mounts dist/ and runs it
-FROM node:26-bookworm
+FROM node:26-trixie
 
-ARG PNPM_VERSION=12.5.1
+ARG PNPM_VERSION=12.18.0
 WORKDIR /project/desktop
 
 # electronuserland/builder stops at Node 24: install the few system tools electron-builder needs for AppImage/deb targets

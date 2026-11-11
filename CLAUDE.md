@@ -29,7 +29,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | Release (Win+Linux, from main) | `pnpm release` |
 | Development build (any branch) | `pnpm release:dev` |
 
-Package manager: **pnpm 12.5.1**, Node **26+**. Build/dev use electron-vite (`config/electron.vite.config.ts`), builder config at `config/electron-builder.yml`. The vite-plus toolchain (fmt/lint/test) is configured in `vite.config.ts`; `vite` is aliased to `@voidzero-dev/vite-plus-core` via the pnpm catalog.
+Package manager: **pnpm 12.18.0**, Node **26+**. Build/dev use electron-vite (`config/electron.vite.config.ts`), builder config at `config/electron-builder.yml`. The vite-plus toolchain (fmt/lint/test) is configured in `vite.config.ts`; `vite` is aliased to `@voidzero-dev/vite-plus-core` via the pnpm catalog.
 
 ## Architecture
 

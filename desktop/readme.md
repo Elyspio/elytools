@@ -13,7 +13,7 @@ The desktop application combines media encoding, torrent search, workspace clean
 | Dependency                   | Purpose                                               |
 | ---------------------------- | ----------------------------------------------------- |
 | Node.js 26+                  | Development runtime, as declared in `package.json`.   |
-| pnpm 12.5.1                  | Package manager pinned by the project.                |
+| pnpm 12.18.0                 | Package manager pinned by the project.                |
 | FFmpeg and FFprobe on `PATH` | Video conversion and media inspection in the Encoder. |
 | Podman or Docker             | Linux release packaging in a container.               |
 
