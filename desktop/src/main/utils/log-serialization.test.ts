@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { serializeLogValue, logArguments } from "./log-serialization";
+import { serializeLogValue, logArguments, serializeLogEntry } from "./log-serialization";
 describe("JSONL serialization", () => {
 	it("preserves structured arguments and escapes line breaks", () => {
 		const line = JSON.stringify(logArguments(["hello\nworld", { count: 4n }]));
@@ -23,4 +23,15 @@ describe("JSONL serialization", () => {
 		};
 		expect(() => JSON.stringify(serializeLogValue(value))).not.toThrow();
 	});
+});
+
+it("omits redundant lifecycle messages and keeps ordinary messages", () => {
+	for (const event of ["enter", "exit"]) {
+		const entry = JSON.parse(
+			serializeLogEntry({ timestamp: "now", level: "info", context: "Settings", message: `${event} onSettingsChanged`, event, method: "onSettingsChanged", durationMs: 2 })
+		);
+		expect(entry).not.toHaveProperty("message");
+		expect(entry).toMatchObject({ event, method: "onSettingsChanged", durationMs: 2 });
+	}
+	expect(JSON.parse(serializeLogEntry({ level: "info", message: "Settings saved" }))).toHaveProperty("message", "Settings saved");
 });

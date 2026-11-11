@@ -38,3 +38,10 @@ export function logArguments(values: unknown[]) {
 	const args = values.filter((value) => typeof value !== "string");
 	return { message, ...(args.length ? { args: serializeLogValue(args) } : {}) };
 }
+
+/** Lifecycle events already identify their action through event and method. */
+export function serializeLogEntry(info: Record<string, unknown>): string {
+	const { timestamp, level, context, message, ...fields } = info;
+	const lifecycle = (fields.event === "enter" || fields.event === "exit") && typeof fields.method === "string";
+	return JSON.stringify(serializeLogValue({ timestamp, level, context, ...(lifecycle ? {} : { message }), ...fields }));
+}

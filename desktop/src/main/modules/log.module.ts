@@ -5,7 +5,7 @@ import { MainContextModule } from "./context/main.context.module";
 import { LoggerService } from "@nestjs/common";
 import * as winston from "winston";
 import { mainContainer } from "@main/di/container.di";
-import { logArguments, serializeLogValue } from "../utils/log-serialization";
+import { logArguments, serializeLogEntry, serializeLogValue } from "../utils/log-serialization";
 
 export type AppLoggerService = Omit<LoggerService, "debug"> &
 	Pick<Required<LoggerService>, "debug"> & {
@@ -33,9 +33,7 @@ export class LogModule {
 						maxsize: 10485760,
 						maxFiles: 3,
 						zippedArchive: true,
-						format: winston.format.printf((info) =>
-							JSON.stringify(serializeLogValue(Object.assign({ timestamp: info.timestamp, level: info.level, context: info.context, message: info.message }, info)))
-						),
+						format: winston.format.printf((info) => serializeLogEntry(info)),
 					}),
 				],
 				format: winston.format.timestamp(),
