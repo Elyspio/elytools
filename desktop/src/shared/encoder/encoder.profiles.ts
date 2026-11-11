@@ -223,6 +223,7 @@ export function analyzeProgressFraction(progress: FfmpegAnalyzeProgress): number
  */
 export async function searchQuality(range: { min: number; max: number }, target: number, measure: (quality: number) => Promise<number>): Promise<QualitySearchResult> {
 	const measures = new Map<number, number>();
+
 	const measureOnce = async (quality: number) => {
 		if (!measures.has(quality)) measures.set(quality, await measure(quality));
 		return measures.get(quality)!;

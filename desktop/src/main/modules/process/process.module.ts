@@ -52,13 +52,16 @@ export class ProcessModule extends LogModule {
 				error ??= new ProcessStuckError(command, reason, milliseconds);
 				child.kill();
 			};
+
 			const timeout = timeoutMs === undefined ? undefined : setTimeout(() => stop("timeout", timeoutMs), timeoutMs);
 			let stall: NodeJS.Timeout | undefined;
+
 			const alive = () => {
 				if (stallMs === undefined) return;
 				clearTimeout(stall);
 				stall = setTimeout(() => stop("stall", stallMs), stallMs);
 			};
+
 			alive();
 
 			child.stdout.on("data", (data: Buffer) => {

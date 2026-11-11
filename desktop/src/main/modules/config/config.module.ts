@@ -78,6 +78,7 @@ export class ConfigModule extends LogModule {
 	 */
 	private unbindUnknownAuthProfiles(config: LatestConfig): LatestConfig {
 		const known = (profileId: string | null) => (profileId && config.auth.profiles.some((profile) => profile.id === profileId) ? profileId : null);
+
 		return {
 			...config,
 			endpoints: {

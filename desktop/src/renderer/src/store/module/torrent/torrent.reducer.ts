@@ -17,12 +17,15 @@ const slice = createSlice({
 		setQuery(state, action: PayloadAction<string>) {
 			state.query = action.payload;
 		},
+
 		setParseEpisodeInfos(state, action: PayloadAction<boolean>) {
 			state.parseEpisodeInfos = action.payload;
 		},
+
 		setSendStatus(state, action: PayloadAction<{ id: string; status: SendStatus }>) {
 			state.sendStatuses[action.payload.id] = action.payload.status;
 		},
+
 		clearSendStatus(state, action: PayloadAction<string>) {
 			delete state.sendStatuses[action.payload];
 		},

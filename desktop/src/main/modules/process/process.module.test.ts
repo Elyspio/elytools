@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vite-plus/test";
 // The real logger needs Electron (log folder): a silent one is enough here
 vi.mock("../log.module", () => ({
 	LogModule: class {
-		public logger = { log() {}, info() {}, debug() {}, warn() {}, error() {}, verbose() {} };
+		public logger = { log() {}, info() {}, debug() {}, warn() {}, error() {}, verbose() {}, structured() {} };
 	},
 }));
 import { ProcessModule, ProcessStuckError } from "./process.module";

@@ -182,7 +182,9 @@ export class FfmpegProcessModule extends LogModule {
 
 		// A failed sample aborts this controller (the other samples are killed), and so does the caller's signal
 		const controller = new AbortController();
+
 		const abort = () => controller.abort();
+
 		signal.addEventListener("abort", abort, { once: true });
 		if (signal.aborted) abort();
 
@@ -198,6 +200,7 @@ export class FfmpegProcessModule extends LogModule {
 			samplesTotal: positions.length,
 			trials: [],
 		};
+
 		const report = (update: Partial<FfmpegAnalyzeProgress>) => {
 			Object.assign(progress, update);
 			onProgress({ ...progress, trials: [...progress.trials] });

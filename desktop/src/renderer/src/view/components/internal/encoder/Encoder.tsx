@@ -64,6 +64,7 @@ export function Encoder() {
 	);
 
 	const isEncoderAvailable = (encoder: string) => encoders.some((e) => e.id === encoder);
+
 	const profile = ENCODER_PROFILES[settings.profile];
 	const profileAvailable = isEncoderAvailable(profile.encoder);
 

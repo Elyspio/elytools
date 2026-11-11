@@ -6,7 +6,9 @@ import { DEFAULT_ENCODER_SETTINGS, getConvertedFilePath, getStatisticsFilePath }
 import { expectedFrames, type PipelineFs, type PipelineOptions, type PipelineTools, replaceOriginal, runEncoderPipeline } from "./encoder.pipeline";
 
 const dir = path.join("media", "show");
+
 const file = (name: string) => path.join(dir, name);
+
 const old = (name: string) => path.join(dir, "old", name);
 
 /** In-memory file system: path → size */
@@ -86,6 +88,7 @@ function harness({ files, codecs = {}, settings = DEFAULT_ENCODER_SETTINGS, outp
 	const events: string[] = [];
 	const controller = new AbortController();
 	const cache = new Map<string, FfmpegAnalyzeResult>();
+
 	const name = (target: string) => path.basename(target);
 
 	const defaults: PipelineTools = {

@@ -27,10 +27,12 @@ export class Semaphore {
 					},
 					cancel: reject,
 				};
+
 				const onAbort = () => {
 					this.waiters.splice(this.waiters.indexOf(waiter), 1);
 					reject(new Error("Aborted"));
 				};
+
 				signal?.addEventListener("abort", onAbort, { once: true });
 				this.waiters.push(waiter);
 			});

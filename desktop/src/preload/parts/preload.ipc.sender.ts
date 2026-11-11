@@ -20,9 +20,11 @@ export function getIpcSender() {
 				async get() {
 					return await ipcRendererWrapper.invoke("config:local:get");
 				},
+
 				async set(config: LatestConfig) {
 					await ipcRendererWrapper.invoke("config:local:set", config);
 				},
+
 				async regenerate() {
 					return await ipcRendererWrapper.invoke("config:local:regenerate");
 				},
@@ -65,30 +67,39 @@ export function getIpcSender() {
 			readText: async (filePath: string): Promise<string> => {
 				return await ipcRendererWrapper.invoke("file:read:text", filePath);
 			},
+
 			async getRandomTempFilePath(filename: string) {
 				return await ipcRendererWrapper.invoke("file:temp:get", filename);
 			},
+
 			async delete(filepath: string, config?: RmDirOptions) {
 				return await ipcRendererWrapper.invoke("file:delete", filepath, config);
 			},
+
 			async exists(filepath: string) {
 				return await ipcRendererWrapper.invoke("file:exists", filepath);
 			},
+
 			async mkdir(dirpath: string) {
 				return await ipcRendererWrapper.invoke("file:directory:create", dirpath);
 			},
+
 			async rename(from: string, to: string) {
 				return await ipcRendererWrapper.invoke("file:rename", from, to);
 			},
+
 			async lstat(filepath: string): Promise<Stats> {
 				return await ipcRendererWrapper.invoke("file:lstat", filepath);
 			},
+
 			async readdir(folder: string, recursively?: boolean): Promise<string[]> {
 				return await ipcRendererWrapper.invoke("file:directory:read", folder, recursively);
 			},
+
 			async readdirEntries(folder: string): Promise<DirectoryEntry[]> {
 				return await ipcRendererWrapper.invoke("file:directory:read:entries", folder);
 			},
+
 			async getDirectorySize(folder: string): Promise<number> {
 				return await ipcRendererWrapper.invoke("file:directory:size", folder);
 			},
@@ -101,9 +112,11 @@ export function getIpcSender() {
 			async getInformation<K extends GetInformationKey>(key: K) {
 				return (await ipcRendererWrapper.invoke("system:info:get", key)) as GetInformationResult[K];
 			},
+
 			async getMeta() {
 				return await ipcRendererWrapper.invoke("system:meta:get");
 			},
+
 			async queryGpu() {
 				return await ipcRendererWrapper.invoke("system:gpu:query");
 			},
@@ -115,18 +128,21 @@ export function getIpcSender() {
 			check() {
 				return ipcRendererWrapper.invoke("update:check");
 			},
+
 			/**
 			 * Current state of the auto update
 			 */
 			status() {
 				return ipcRendererWrapper.invoke("update:status:get");
 			},
+
 			/**
 			 * Downloads the release found (older release, development build)
 			 */
 			download() {
 				return ipcRendererWrapper.invoke("update:download");
 			},
+
 			/**
 			 * Restarts on the downloaded release
 			 */

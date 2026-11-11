@@ -9,6 +9,7 @@ type TorrentRowActionProps = {
 	row: NyaaTorrentItem;
 	sendToQbittorrent: (row: NyaaTorrentItem) => void;
 };
+
 export function TorrentRowAction({ row, sendToQbittorrent }: TorrentRowActionProps) {
 	const sendStatuses = useAppSelector((s) => s.torrent.sendStatuses);
 

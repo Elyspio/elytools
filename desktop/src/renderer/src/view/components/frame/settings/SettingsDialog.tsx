@@ -91,10 +91,13 @@ export function SettingsDialog() {
 	};
 
 	const setEndpoint = <K extends "homeAssistant" | "api">(field: K, value: string) => save((c) => ({ ...c, endpoints: { ...c.endpoints, [field]: value } }));
+
 	const setQbittorrent = <K extends keyof LatestConfig["endpoints"]["qbittorrent"]>(field: K, value: LatestConfig["endpoints"]["qbittorrent"][K]) =>
 		save((c) => ({ ...c, endpoints: { ...c.endpoints, qbittorrent: { ...c.endpoints.qbittorrent, [field]: value } } }));
+
 	const setLlmUsage = <K extends keyof LatestConfig["llmUsage"]>(field: K, value: LatestConfig["llmUsage"][K]) =>
 		save((c) => ({ ...c, llmUsage: { ...c.llmUsage, [field]: value } }));
+
 	const setUpdates = <K extends keyof LatestConfig["updates"]>(field: K, value: LatestConfig["updates"][K]) => save((c) => ({ ...c, updates: { ...c.updates, [field]: value } }));
 
 	const syncLlmUsage = async () => {

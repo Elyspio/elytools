@@ -93,10 +93,12 @@ export async function runEncoderPipeline(options: PipelineOptions): Promise<void
 	const lookahead = profile.pipeline === "alternate" ? 1 : profile.fileParallelism;
 
 	const phases = new Map<string, FileEncodeState["phase"]>(paths.map((file) => [file, "pending"]));
+
 	const update = (file: string, state: Partial<FileEncodeState>) => {
 		if (state.phase) phases.set(file, state.phase);
 		options.update(file, state);
 	};
+
 	const fail = (file: string, error: unknown) => update(file, signal.aborted ? { phase: "aborted" } : { phase: "failed", note: errorMessage(error) });
 
 	// Jobs analyzed and waiting for an encoder
@@ -106,11 +108,14 @@ export async function runEncoderPipeline(options: PipelineOptions): Promise<void
 
 	// Both stages wait on the same changes: a job queued or taken, an encode finished, the end of the calibration, an abort
 	const waiters = new Set<() => void>();
+
 	const wake = () => {
 		for (const waiter of waiters) waiter();
 		waiters.clear();
 	};
+
 	const changed = () => new Promise<void>((resolve) => waiters.add(resolve));
+
 	signal.addEventListener("abort", wake, { once: true });
 
 	const conflicts = findOutputConflicts(paths);

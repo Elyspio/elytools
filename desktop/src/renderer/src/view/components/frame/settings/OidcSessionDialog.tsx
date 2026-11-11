@@ -119,8 +119,10 @@ const RolesPanel: React.FC<{ groups: RoleGroup[] }> = ({ groups }) => {
 		.filter((group) => group.roles.length > 0);
 
 	const groupKey = (group: RoleGroup) => `${group.client ?? "realm"}:${group.isBuiltin}`;
+
 	// Built-in groups start folded, a click flips the default; a filter opens every match
 	const isOpen = (group: RoleGroup) => !!needle || group.isBuiltin === toggled.has(groupKey(group));
+
 	const flip = (group: RoleGroup) =>
 		setToggled((current) => {
 			const next = new Set(current);

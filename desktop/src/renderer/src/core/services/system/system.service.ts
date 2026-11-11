@@ -29,7 +29,9 @@ export class SystemService {
 		if (xml === null) throw new Error("nvidia-smi is not available");
 		const data: NvidiaSmi = this.xmlParser.parse(xml) as NvidiaSmi;
 		const use = data.nvidia_smi_log.gpu.utilization;
+
 		const parse = (number: string) => Number.parseFloat(number.slice(0, -1));
+
 		return {
 			decode: parse(use.decoder_util),
 			encode: parse(use.encoder_util),
