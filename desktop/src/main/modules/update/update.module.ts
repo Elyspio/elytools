@@ -46,6 +46,8 @@ export class UpdateModule extends LogModule {
 	) {
 		super("UpdateModule");
 		this.autoUpdater.logger = this.logger;
+		// Windows releases use the full NSIS installer.
+		this.autoUpdater.disableWebInstaller = true;
 		// Downloads are started by this module: a downgrade waits for the user
 		this.autoUpdater.autoDownload = false;
 		this.autoUpdater.autoInstallOnAppQuit = false;
