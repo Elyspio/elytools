@@ -22,6 +22,7 @@ const reducers = combineReducers({
 
 export const store = configureStore({
 	reducer: reducers,
+
 	middleware: (defaults) =>
 		defaults({
 			thunk: {
@@ -30,6 +31,7 @@ export const store = configureStore({
 				},
 			},
 		}).concat(logErrorMiddleware),
+
 	// Development only: a state given in the URL would otherwise be trusted by an installed app
 	preloadedState: import.meta.env.DEV ? (getUriParam("store", { json: true, remove: true }) ?? undefined) : undefined,
 });
@@ -42,6 +44,7 @@ if (import.meta.env.DEV) window.store = store;
 export type AppDispatch = typeof store.dispatch;
 
 export const useAppDispatch = () => useDispatch<AppDispatch>();
+
 export const useAppSelector: TypedUseSelectorHook<StoreState> = useSelector;
 
 export type ExtraArgument = {

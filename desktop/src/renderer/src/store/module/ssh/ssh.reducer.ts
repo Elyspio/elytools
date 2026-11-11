@@ -102,21 +102,26 @@ const slice = createSlice({
 		setFilter(state, action: PayloadAction<string>) {
 			state.machines.filter = action.payload;
 		},
+
 		toggleMachineSelection(state, action: PayloadAction<string>) {
 			const machineId = action.payload;
 			state.machines.selectedMachineIds = state.machines.selectedMachineIds.includes(machineId)
 				? state.machines.selectedMachineIds.filter((id) => id !== machineId)
 				: [...state.machines.selectedMachineIds, machineId];
 		},
+
 		setMachineSelection(state, action: PayloadAction<string[]>) {
 			state.machines.selectedMachineIds = action.payload;
 		},
+
 		setActiveSession(state, action: PayloadAction<string | undefined>) {
 			state.sessions.activeSessionId = action.payload;
 		},
+
 		setMachineConnectionState(state, action: PayloadAction<{ machineId: string; state: SshConnectionState }>) {
 			state.machines.connectionStates[action.payload.machineId] = action.payload.state;
 		},
+
 		updateTransferProgress(state, action: PayloadAction<SshTransferProgressEvent>) {
 			const current = state.transfers.byId[action.payload.transferId];
 			if (!current) return;
@@ -125,6 +130,7 @@ const slice = createSlice({
 			current.totalBytes = action.payload.totalBytes;
 			current.error = action.payload.error;
 		},
+
 		appendCommandChunk(state, action: PayloadAction<SshCommandChunkEvent>) {
 			const run = state.commands.byId[action.payload.runId];
 			if (!run) return;
@@ -140,6 +146,7 @@ const slice = createSlice({
 				output.stderr += action.payload.data;
 			}
 		},
+
 		completeCommandTarget(state, action: PayloadAction<SshCommandCompletedEvent>) {
 			const run = state.commands.byId[action.payload.runId];
 			if (!run) return;
@@ -152,6 +159,7 @@ const slice = createSlice({
 			output.error = action.payload.error;
 		},
 	},
+
 	extraReducers: (builder) => {
 		builder.addCase(loadFolders.pending, (state) => {
 			state.folders.loading = true;

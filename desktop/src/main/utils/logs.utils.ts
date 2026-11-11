@@ -1,5 +1,6 @@
 import type { AppLoggerService } from "../modules/log.module";
 type LogArgument = number[] | ((...args: any[]) => string) | boolean;
+
 export function log(logArguments?: LogArgument, level: "debug" | "log" = "log") {
 	return (target: any, method: string, descriptor: PropertyDescriptor) => {
 		const original = descriptor.value;
@@ -19,6 +20,7 @@ export function log(logArguments?: LogArgument, level: "debug" | "log" = "log") 
 			const fields = { method, ...(params === undefined ? {} : { params }) };
 			logger.structured(level, `Enter ${method}`, { event: "enter", ...fields });
 			const startAt = performance.now();
+
 			const finish = (error?: unknown, failed = false) =>
 				logger.structured(failed ? "error" : level, `Exit ${method}`, {
 					event: "exit",
@@ -26,6 +28,7 @@ export function log(logArguments?: LogArgument, level: "debug" | "log" = "log") 
 					durationMs: Number((performance.now() - startAt).toFixed(3)),
 					...(failed ? { error } : {}),
 				});
+
 			let result: unknown;
 			try {
 				result = original.apply(this, args);
@@ -51,7 +54,9 @@ export function log(logArguments?: LogArgument, level: "debug" | "log" = "log") 
 		return descriptor;
 	};
 }
+
 log.debug = (args: LogArgument = true) => log(args, "debug");
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
 function getFunctionArgs(func: Function) {
 	try {

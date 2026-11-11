@@ -78,6 +78,7 @@ export const mediaSlice = createSlice({
 	name: "media",
 	initialState,
 	reducers: {},
+
 	extraReducers: ({ addCase }) => {
 		addCase(setMedias.fulfilled, (state, action) => {
 			state.data = action.payload;

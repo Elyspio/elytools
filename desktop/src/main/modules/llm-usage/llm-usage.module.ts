@@ -30,10 +30,12 @@ export class LlmUsageModule extends LogModule {
 		this.collector = new LlmUsageCollector({
 			holder: "elytools",
 			logger: this.logger,
+
 			getAccessToken: async () => {
 				const { llmUsage } = await this.configModule.getConfig();
 				return await this.oidcModule.getAccessToken(llmUsage.authProfileId, "llm-usage");
 			},
+
 			getSettings: async () => {
 				const { llmUsage } = await this.configModule.getConfig();
 				return { apiBaseUrl: llmUsage.apiBaseUrl, machineName: llmUsage.machineName };

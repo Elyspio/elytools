@@ -17,6 +17,7 @@ describe("JSONL serialization", () => {
 			get broken() {
 				throw new Error("getter");
 			},
+
 			toJSON() {
 				throw new Error("json");
 			},

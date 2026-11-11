@@ -344,6 +344,7 @@ export const AuthenticationSettings: React.FC<AuthenticationSettingsProps> = ({
 	}, [redirectUri]);
 
 	const toggle = (id: string) => setExpandedId((current) => (current === id ? null : id));
+
 	const usedBy = (profileId: string) => (Object.keys(bindings) as AuthModuleName[]).filter((module) => bindings[module] === profileId);
 
 	return (

@@ -14,6 +14,7 @@ const slice = createSlice({
 	name: "update",
 	initialState,
 	reducers: {},
+
 	extraReducers: (builder) => {
 		builder.addCase(updateStatusChanged, (state, action) => {
 			state.status = action.payload;

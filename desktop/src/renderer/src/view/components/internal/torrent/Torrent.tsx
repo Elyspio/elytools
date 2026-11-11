@@ -154,11 +154,13 @@ export function Torrent() {
 				width: 60,
 				align: "center",
 				headerAlign: "center",
+
 				cellClassName: (params) => {
 					if (params.value === 0) return "Torrent__seed-none";
 					if (params.value <= 5) return "Torrent__seed-low";
 					return "Torrent__seed-ok";
 				},
+
 				sortComparator: (v1: number, v2: number) => v1 - v2,
 			},
 			{
@@ -167,6 +169,7 @@ export function Torrent() {
 				headerAlign: "center",
 				align: "right",
 				width: 120,
+
 				valueGetter: (_, row) => row.size,
 			},
 			{
@@ -175,6 +178,7 @@ export function Torrent() {
 				width: 100,
 				align: "center",
 				headerAlign: "center",
+
 				valueGetter: (_, row) => dayjs(row.date).format("YYYY-MM-DD"),
 			},
 			{
@@ -183,6 +187,7 @@ export function Torrent() {
 				width: 90,
 				sortable: false,
 				disableColumnMenu: true,
+
 				renderCell: ({ row }) => <TorrentRowAction row={row} sendToQbittorrent={sendToQbittorrent} />,
 			},
 		],
@@ -216,6 +221,7 @@ export function Torrent() {
 				headerAlign: "center",
 				align: "center",
 				width: 70,
+
 				valueGetter: (_, row) => row.data.length,
 			},
 			{
@@ -224,6 +230,7 @@ export function Torrent() {
 				width: 110,
 				sortable: false,
 				disableColumnMenu: true,
+
 				renderCell: ({ row }) => (
 					<TorrentGroupAction
 						row={row}

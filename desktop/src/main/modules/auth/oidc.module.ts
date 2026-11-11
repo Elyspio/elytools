@@ -277,6 +277,7 @@ export class OidcModule extends LogModule {
 		this.healthCheckTimer = setInterval(() => void this.checkProfiles(), HEALTH_CHECK_INTERVAL_MS);
 
 		const checkLater = () => setTimeout(() => void this.checkProfiles(), HEALTH_CHECK_RESUME_DELAY_MS);
+
 		powerMonitor.on("resume", checkLater);
 		powerMonitor.on("unlock-screen", checkLater);
 	}
@@ -372,6 +373,7 @@ export class OidcModule extends LogModule {
 		if (!refreshToken) {
 			throw new Error(`Not authenticated on profile ${profile.name} (${requester}). Please sign in first.`);
 		}
+
 		const signedOutMeanwhile = () => new Error(`Profile ${profile.name} was signed out during the refresh (${requester})`);
 
 		let res: Response;

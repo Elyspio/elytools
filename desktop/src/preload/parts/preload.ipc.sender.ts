@@ -20,9 +20,11 @@ export function getIpcSender() {
 				async get() {
 					return await ipcRendererWrapper.invoke("config:local:get");
 				},
+
 				async set(config: LatestConfig) {
 					await ipcRendererWrapper.invoke("config:local:set", config);
 				},
+
 				async regenerate() {
 					return await ipcRendererWrapper.invoke("config:local:regenerate");
 				},
@@ -32,6 +34,7 @@ export function getIpcSender() {
 			selectDirectory: async <WithFiles extends boolean>(returnsFiles: WithFiles) => {
 				return (await ipcRendererWrapper.invoke("dialog:selectDirectory", returnsFiles)) as GetFolderResult<WithFiles>;
 			},
+
 			selectPaths: async (options?: SelectPathsOptions): Promise<string[] | null> => {
 				return await ipcRendererWrapper.invoke("dialog:selectPaths", options);
 			},
@@ -40,9 +43,11 @@ export function getIpcSender() {
 			start: async (paths: string[]) => {
 				return await ipcRendererWrapper.invoke("encoder:start", paths);
 			},
+
 			cancel: async () => {
 				return await ipcRendererWrapper.invoke("encoder:cancel");
 			},
+
 			getStatus: async () => {
 				return await ipcRendererWrapper.invoke("encoder:status:get");
 			},
@@ -50,9 +55,11 @@ export function getIpcSender() {
 		process: {
 			ffmpeg: {
 				isAvailable: async () => await ipcRendererWrapper.invoke("process:ffmpeg:get:available"),
+
 				getEncoders: async () => {
 					return await ipcRendererWrapper.invoke("process:ffmpeg:get:encoders");
 				},
+
 				probe: async (path: string) => {
 					return await ipcRendererWrapper.invoke("process:ffmpeg:get:info", path);
 				},
@@ -62,33 +69,43 @@ export function getIpcSender() {
 			write: async (filePath: string, binaryContent: Uint8Array) => {
 				return await ipcRendererWrapper.invoke("file:write", filePath, binaryContent);
 			},
+
 			readText: async (filePath: string): Promise<string> => {
 				return await ipcRendererWrapper.invoke("file:read:text", filePath);
 			},
+
 			async getRandomTempFilePath(filename: string) {
 				return await ipcRendererWrapper.invoke("file:temp:get", filename);
 			},
+
 			async delete(filepath: string, config?: RmDirOptions) {
 				return await ipcRendererWrapper.invoke("file:delete", filepath, config);
 			},
+
 			async exists(filepath: string) {
 				return await ipcRendererWrapper.invoke("file:exists", filepath);
 			},
+
 			async mkdir(dirpath: string) {
 				return await ipcRendererWrapper.invoke("file:directory:create", dirpath);
 			},
+
 			async rename(from: string, to: string) {
 				return await ipcRendererWrapper.invoke("file:rename", from, to);
 			},
+
 			async lstat(filepath: string): Promise<Stats> {
 				return await ipcRendererWrapper.invoke("file:lstat", filepath);
 			},
+
 			async readdir(folder: string, recursively?: boolean): Promise<string[]> {
 				return await ipcRendererWrapper.invoke("file:directory:read", folder, recursively);
 			},
+
 			async readdirEntries(folder: string): Promise<DirectoryEntry[]> {
 				return await ipcRendererWrapper.invoke("file:directory:read:entries", folder);
 			},
+
 			async getDirectorySize(folder: string): Promise<number> {
 				return await ipcRendererWrapper.invoke("file:directory:size", folder);
 			},
@@ -101,9 +118,11 @@ export function getIpcSender() {
 			async getInformation<K extends GetInformationKey>(key: K) {
 				return (await ipcRendererWrapper.invoke("system:info:get", key)) as GetInformationResult[K];
 			},
+
 			async getMeta() {
 				return await ipcRendererWrapper.invoke("system:meta:get");
 			},
+
 			async queryGpu() {
 				return await ipcRendererWrapper.invoke("system:gpu:query");
 			},
@@ -115,18 +134,21 @@ export function getIpcSender() {
 			check() {
 				return ipcRendererWrapper.invoke("update:check");
 			},
+
 			/**
 			 * Current state of the auto update
 			 */
 			status() {
 				return ipcRendererWrapper.invoke("update:status:get");
 			},
+
 			/**
 			 * Downloads the release found (older release, development build)
 			 */
 			download() {
 				return ipcRendererWrapper.invoke("update:download");
 			},
+
 			/**
 			 * Restarts on the downloaded release
 			 */
@@ -147,6 +169,7 @@ export function getIpcSender() {
 				save: async (input: OidcProfileInput): Promise<OidcProfile> => {
 					return await ipcRendererWrapper.invoke("auth:profile:save", input);
 				},
+
 				delete: async (profileId: string) => {
 					await ipcRendererWrapper.invoke("auth:profile:delete", profileId);
 				},
@@ -155,15 +178,19 @@ export function getIpcSender() {
 				startLogin: async (profileId: string) => {
 					await ipcRendererWrapper.invoke("auth:oidc:login:start", profileId);
 				},
+
 				cancelLogin: () => {
 					void ipcRendererWrapper.invoke("auth:oidc:login:cancel");
 				},
+
 				logout: async (profileId: string) => {
 					await ipcRendererWrapper.invoke("auth:oidc:logout", profileId);
 				},
+
 				statuses: async (): Promise<OidcAuthStatus[]> => {
 					return await ipcRendererWrapper.invoke("auth:oidc:status:list");
 				},
+
 				tokens: async (profileId: string): Promise<OidcSessionTokens> => {
 					return await ipcRendererWrapper.invoke("auth:oidc:tokens:get", profileId);
 				},
@@ -173,6 +200,7 @@ export function getIpcSender() {
 			status: async (): Promise<LlmUsageStatus> => {
 				return await ipcRendererWrapper.invoke("llm-usage:status:get");
 			},
+
 			sync: async (): Promise<LlmUsageStatus> => {
 				return await ipcRendererWrapper.invoke("llm-usage:sync");
 			},
@@ -182,9 +210,11 @@ export function getIpcSender() {
 				list: async () => {
 					return await ipcRendererWrapper.invoke("ssh:folders:list");
 				},
+
 				save: async (folder: { id?: string; name: string }) => {
 					return await ipcRendererWrapper.invoke("ssh:folder:save", folder);
 				},
+
 				delete: async (folderId: string) => {
 					await ipcRendererWrapper.invoke("ssh:folder:delete", folderId);
 				},
@@ -193,12 +223,15 @@ export function getIpcSender() {
 				list: async (): Promise<SshMachine[]> => {
 					return await ipcRendererWrapper.invoke("ssh:machines:list");
 				},
+
 				save: async (machine: SshMachineInput): Promise<SshMachine> => {
 					return await ipcRendererWrapper.invoke("ssh:machine:save", machine);
 				},
+
 				delete: async (machineId: string): Promise<void> => {
 					await ipcRendererWrapper.invoke("ssh:machine:delete", machineId);
 				},
+
 				getCredentials: async (machineId: string): Promise<{ password?: string; privateKey?: string }> => {
 					return await ipcRendererWrapper.invoke("ssh:machine:credentials", machineId);
 				},
@@ -207,9 +240,11 @@ export function getIpcSender() {
 				open: async (machineId: string, path?: string): Promise<SshDirectoryListing> => {
 					return await ipcRendererWrapper.invoke("ssh:session:open", machineId, path);
 				},
+
 				close: async (sessionId: string): Promise<void> => {
 					await ipcRendererWrapper.invoke("ssh:session:close", sessionId);
 				},
+
 				listDirectory: async (sessionId: string, nextPath?: string, useSudo?: boolean): Promise<SshDirectoryListing> => {
 					return await ipcRendererWrapper.invoke("ssh:session:list-directory", sessionId, nextPath, useSudo);
 				},
@@ -218,9 +253,11 @@ export function getIpcSender() {
 				download: async (sessionId: string, remotePath: string, localDirectory: string): Promise<SshTransfer> => {
 					return await ipcRendererWrapper.invoke("ssh:transfer:download", sessionId, remotePath, localDirectory);
 				},
+
 				upload: async (sessionId: string, localPath: string, remoteDirectory: string): Promise<SshTransfer> => {
 					return await ipcRendererWrapper.invoke("ssh:transfer:upload", sessionId, localPath, remoteDirectory);
 				},
+
 				cancel: async (transferId: string): Promise<void> => {
 					await ipcRendererWrapper.invoke("ssh:transfer:cancel", transferId);
 				},
@@ -229,6 +266,7 @@ export function getIpcSender() {
 				run: async (request: SshCommandRequest): Promise<SshCommandRun> => {
 					return await ipcRendererWrapper.invoke("ssh:command:run", request);
 				},
+
 				stop: async (runId: string, runTargetId?: string): Promise<void> => {
 					await ipcRendererWrapper.invoke("ssh:command:stop", runId, runTargetId);
 				},
@@ -239,6 +277,7 @@ export function getIpcSender() {
 				addFromUrl: async (torrentUrl: string, infoHash?: string): Promise<TorrentAddResult> => {
 					return await ipcRendererWrapper.invoke("torrent:qbittorrent:add-from-url", torrentUrl, infoHash);
 				},
+
 				getExistingHashes: async (): Promise<string[]> => {
 					return await ipcRendererWrapper.invoke("torrent:qbittorrent:get-hashes");
 				},

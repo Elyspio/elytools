@@ -7,6 +7,7 @@ describe("log decorator", () => {
 		log(options)({}, "run", descriptor);
 		return { run: descriptor.value.bind({ logger }), logger };
 	}
+
 	it("records selected parameters and duration without changing results", () => {
 		const { run, logger } = wrap(function (value) {
 			return value;

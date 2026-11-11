@@ -64,6 +64,7 @@ export function SSH() {
 			if (!deferredFilter) return true;
 			return [machine.name, machine.host, machine.user].some((v) => v.toLowerCase().includes(deferredFilter));
 		};
+
 		const folderMatches = (folder: SshFolder) => !deferredFilter || folder.name.toLowerCase().includes(deferredFilter);
 
 		const folderRows = folders

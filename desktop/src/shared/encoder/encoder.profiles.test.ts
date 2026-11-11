@@ -95,6 +95,7 @@ describe("computeSamplePositions", () => {
 describe("searchQuality", () => {
 	// Measured on S03E04 with av1_nvenc: 22 → 43.5 dB, 30 → 42.2 dB, 34 → 41.5 dB
 	const curve = (cq: number) => 47 - cq * 0.16;
+
 	const range = { min: 22, max: 36 };
 
 	const search = async (target: number, measure: (cq: number) => number) => {
@@ -235,6 +236,7 @@ describe.skipIf(!hasFfmpeg)("XPSNR measure with ffmpeg", () => {
 		const dir = fs.mkdtempSync(path.join(os.tmpdir(), "elytools-xpsnr-test-"));
 		const source = path.join(dir, "source.mp4");
 		const sample = path.join(dir, "sample.mkv");
+
 		const run = (args: string[]) => spawnSync("ffmpeg", ["-hide_banner", "-v", "error", "-y", ...args], { encoding: "utf-8" });
 
 		try {
@@ -359,7 +361,9 @@ describe("video statistics", () => {
 		try {
 			const input = path.join(dir, "in.mkv");
 			const output = path.join(dir, "out.mkv");
+
 			const ffmpeg = (args: string[]) => spawnSync("ffmpeg", ["-hide_banner", "-v", "error", ...args], { encoding: "utf-8" });
+
 			const ffprobe = (args: string[]) => spawnSync("ffprobe", args, { encoding: "utf-8" });
 
 			expect(ffmpeg(["-f", "lavfi", "-i", "testsrc2=size=320x180:rate=24:duration=2", "-c:v", "libx264", input]).status).toBe(0);

@@ -17,9 +17,11 @@ export class LogModule {
 	private static logFolder: string;
 	private static backend: winston.Logger;
 	public logger: AppLoggerService;
+
 	protected constructor(name: string) {
 		this.logger = LogModule.create(name);
 	}
+
 	public static create(name: string): AppLoggerService {
 		if (!LogModule.backend) {
 			LogModule.backend = winston.createLogger({
@@ -40,21 +42,31 @@ export class LogModule {
 				exitOnError: false,
 			});
 		}
+
 		const write = (level: string, args: unknown[], fields: Record<string, unknown> = {}) => {
 			LogModule.backend.log({ ...(serializeLogValue(fields) as Record<string, unknown>), timestamp: new Date().toISOString(), level, context: name, ...logArguments(args) });
 		};
+
 		const logger = {
 			log: (...args: unknown[]) => write("info", args),
+
 			info: (...args: unknown[]) => write("info", args),
+
 			debug: (...args: unknown[]) => write("debug", args),
+
 			warn: (...args: unknown[]) => write("warn", args),
+
 			error: (...args: unknown[]) => write("error", args),
+
 			verbose: (...args: unknown[]) => write("verbose", args),
+
 			fatal: (...args: unknown[]) => write("error", args),
+
 			structured: (level: "log" | "debug" | "error", message: string, fields: Record<string, unknown>) => write(level === "log" ? "info" : level, [message], fields),
 		};
 		return logger;
 	}
+
 	private static getLogFolder() {
 		if (LogModule.logFolder) return LogModule.logFolder;
 		const folder = path.join(mainContainer.get(MainContextModule).appFolder, "logs");
