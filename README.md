@@ -69,3 +69,5 @@ desktop/
 ## License
 
 Elytools is distributed under the [MIT License](desktop/LICENSE.md).
+
+Desktop logs are written as JSON Lines to `logs/main.jsonl` in the application folder. Each line contains `timestamp` (UTC), `level`, `context`, `message`, and optional structured `args` or method lifecycle fields. Console output remains readable; files rotate at 10 MB with three gzip archives. Existing text logs are preserved.

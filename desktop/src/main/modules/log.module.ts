@@ -1,101 +1,62 @@
-import { utilities, WinstonModule } from "nest-winston";
+import { utilities } from "nest-winston";
 import path from "node:path";
 import * as fs from "node:fs";
 import { MainContextModule } from "./context/main.context.module";
 import { LoggerService } from "@nestjs/common";
 import * as winston from "winston";
-import * as util from "node:util";
 import { mainContainer } from "@main/di/container.di";
+import { logArguments, serializeLogValue } from "../utils/log-serialization";
 
 export type AppLoggerService = Omit<LoggerService, "debug"> &
 	Pick<Required<LoggerService>, "debug"> & {
 		info: LoggerService["log"];
+		structured(level: "log" | "debug" | "error", message: string, fields: Record<string, unknown>): void;
 	};
 
-/**
- * Classe de base des modules permettant de gérer les logs
- */
 export class LogModule {
 	private static logFolder: string;
+	private static backend: winston.Logger;
 	public logger: AppLoggerService;
-
-	protected constructor(name: string, filename = "main.log") {
-		this.logger = LogModule.create(name, filename);
+	protected constructor(name: string) {
+		this.logger = LogModule.create(name);
 	}
-
-	/**
-	 * Installed builds log from "info": the debug lines (each process started, each periodic check) drown the rest.
-	 * Development and `--debug` / ELYTOOLS_DEBUG keep everything.
-	 */
-	private static level(): "debug" | "info" {
-		return mainContainer.get(MainContextModule).allowDebug ? "debug" : "info";
-	}
-
-	/**
-	 *
-	 * @param name
-	 * @param filename
-	 */
-	public static create(name: string, filename = "main.log"): AppLoggerService {
-		const logger = WinstonModule.createLogger({
-			format: winston.format.combine(
-				winston.format.timestamp(),
-				utilities.format.nestLike(name, {
-					colors: true,
-					prettyPrint: true,
-				})
-			),
-			level: LogModule.level(),
-			transports: [
-				new winston.transports.Console(),
-				new winston.transports.File({
-					filename: path.join(this.getLogFolder(), filename),
-					maxsize: 10485760,
-					maxFiles: 3,
-					zippedArchive: true,
-					format: winston.format.combine(
-						winston.format.timestamp(),
-						utilities.format.nestLike(name, {
-							colors: false,
-							prettyPrint: true,
-						})
-					),
-				}),
-			],
-			exitOnError: false,
-			handleExceptions: false,
-			handleRejections: false,
-		}) as AppLoggerService;
-
-		const oldMethods = {
-			log: logger.log.bind(logger),
-			debug: logger.debug?.bind(logger),
-			error: logger.error.bind(logger),
-			warn: logger.warn.bind(logger),
+	public static create(name: string): AppLoggerService {
+		if (!LogModule.backend) {
+			LogModule.backend = winston.createLogger({
+				level: mainContainer.get(MainContextModule).allowDebug ? "debug" : "info",
+				transports: [
+					new winston.transports.Console({
+						format: winston.format.combine(winston.format.timestamp(), utilities.format.nestLike("Elytools", { colors: true, prettyPrint: true })),
+					}),
+					new winston.transports.File({
+						filename: path.join(LogModule.getLogFolder(), "main.jsonl"),
+						maxsize: 10485760,
+						maxFiles: 3,
+						zippedArchive: true,
+						format: winston.format.printf((info) =>
+							JSON.stringify(serializeLogValue(Object.assign({ timestamp: info.timestamp, level: info.level, context: info.context, message: info.message }, info)))
+						),
+					}),
+				],
+				format: winston.format.timestamp(),
+				exitOnError: false,
+			});
+		}
+		const write = (level: string, args: unknown[], fields: Record<string, unknown> = {}) => {
+			LogModule.backend.log({ ...(serializeLogValue(fields) as Record<string, unknown>), timestamp: new Date().toISOString(), level, context: name, ...logArguments(args) });
 		};
-
-		logger.log = (...args: any[]) => {
-			oldMethods.log(`${args.map((arg) => util.inspect(arg, false, null)).join(" ")}`);
+		const logger = {
+			log: (...args: unknown[]) => write("info", args),
+			info: (...args: unknown[]) => write("info", args),
+			debug: (...args: unknown[]) => write("debug", args),
+			warn: (...args: unknown[]) => write("warn", args),
+			error: (...args: unknown[]) => write("error", args),
+			verbose: (...args: unknown[]) => write("verbose", args),
+			fatal: (...args: unknown[]) => write("error", args),
+			structured: (level: "log" | "debug" | "error", message: string, fields: Record<string, unknown>) => write(level === "log" ? "info" : level, [message], fields),
 		};
-		logger.debug = (...args: any[]) => {
-			oldMethods.debug?.(`${args.map((arg) => util.inspect(arg, false, null)).join(" ")}`);
-		};
-		logger.error = (...args: any[]) => {
-			oldMethods.error(`${args.map((arg) => util.inspect(arg, false, null)).join(" ")}`);
-		};
-		logger.warn = (...args: any[]) => {
-			oldMethods.warn(`${args.map((arg) => util.inspect(arg, false, null)).join(" ")}`);
-		};
-
-		logger.info = logger.log;
-
 		return logger;
 	}
-
-	public static getRendererLogger() {
-		return new LogModule("Renderer").logger;
-	}
-
 	private static getLogFolder() {
 		if (LogModule.logFolder) return LogModule.logFolder;
 		const folder = path.join(mainContainer.get(MainContextModule).appFolder, "logs");
