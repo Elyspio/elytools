@@ -8,10 +8,10 @@ import { UpdateModule } from "../modules/update/update.module";
 import { FileModule } from "../modules/file.module";
 import { mainContainer } from "@main/di/container.di";
 import { ProcessModule } from "@main/modules/process/process.module";
-import { ExecResult, SpawnResult } from "@shared/types/process.types";
 import { Stats } from "node:fs";
 import { FfmpegProcessModule } from "@main/modules/process/ffmpeg.process.module";
-import { Encoder, FfmpegConvertOptions } from "@shared/types/ffmpeg.types";
+import { Encoder, EncoderQueueStatus } from "@shared/types/ffmpeg.types";
+import { EncoderQueueModule } from "@main/modules/encoder/encoder-queue.module";
 import type { FfprobeResult } from "@shared/types/ffprobe.types";
 import path from "node:path";
 import os from "os";
@@ -178,13 +178,6 @@ const ipcHandlers: IpcHandledEvents = {
 	async "file:read:text"(_, filePath) {
 		return await mainContainer.get(FileModule).readText(filePath);
 	},
-	async "process:exec"(_, command, args, options): Promise<ExecResult> {
-		command += ` ${args.join(" ")}`;
-		return await mainContainer.get(ProcessModule).execute(command, options);
-	},
-	"process:ffmpeg:convert"(_: IpcMainInvokeEvent, opts: FfmpegConvertOptions): Promise<string> {
-		return mainContainer.get(FfmpegProcessModule).convert(opts);
-	},
 	"process:ffmpeg:get:available"(): Promise<boolean> {
 		return mainContainer.get(FfmpegProcessModule).isAvailable();
 	},
@@ -195,12 +188,22 @@ const ipcHandlers: IpcHandledEvents = {
 	"process:ffmpeg:get:info"(_, path): Promise<FfprobeResult> {
 		return mainContainer.get(FfmpegProcessModule).probe(path);
 	},
-
-	"process:kill"(_, pid, signal): void {
-		mainContainer.get(ProcessModule).kill(pid, signal);
+	"encoder:start"(_, paths): Promise<void> {
+		return mainContainer.get(EncoderQueueModule).start(paths);
 	},
-	async "process:spawn"(_, command, args, options): Promise<SpawnResult> {
-		return await mainContainer.get(ProcessModule).spawn(command, args, options);
+	"encoder:cancel"(): Promise<void> {
+		return mainContainer.get(EncoderQueueModule).cancel();
+	},
+	"encoder:status:get"(): EncoderQueueStatus {
+		return mainContainer.get(EncoderQueueModule).getStatus();
+	},
+	async "system:gpu:query"(): Promise<string | null> {
+		try {
+			const result = await mainContainer.get(ProcessModule).run("nvidia-smi", ["-x", "-q"]);
+			return result.code === 0 ? result.stdout : null;
+		} catch {
+			return null;
+		}
 	},
 	"system:info:get"<T extends GetInformationKey>(_: IpcMainInvokeEvent, key: T) {
 		return (si[key] as () => GetInformationResult[T])();

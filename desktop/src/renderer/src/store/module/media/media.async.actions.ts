@@ -3,6 +3,7 @@ import { DialogService } from "@services/electron/dialog.service";
 import { createAsyncActionGenerator, getService } from "@store/utils/utils.actions";
 import type { Media } from "@components/internal/encoder/type";
 import type { FileInfo } from "@shared/types/dialog.types";
+import { isVideoFile } from "@shared/encoder/encoder.profiles";
 import FilesService from "@services/files/files.service";
 import { IGNORE_DIR_NAMES } from "@components/internal/purge/purge.presets";
 import { beginPurgeEstimate, setPurgeDeleteProgress, setPurgeEstimateProgress, setPurgeScanProgress } from "./media.actions";
@@ -15,7 +16,7 @@ export const selectFolderOrFiles = createAsyncThunk("select/folder", async (mode
 });
 
 export const setMedias = createAsyncThunk("set", async (files: FileInfo[]) => {
-	files = files.filter((f) => f.type === "file");
+	files = files.filter((f) => f.type === "file" && isVideoFile(f.path));
 
 	const probes = await Promise.all(files.map(async (f) => [f, await window.preload.ipc.send.process.ffmpeg.probe(f.path)] as const));
 

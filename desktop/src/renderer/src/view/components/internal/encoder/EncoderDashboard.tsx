@@ -1,177 +1,153 @@
+import { useEffect, useState } from "react";
 import { useAppSelector } from "@store";
-import { useMemo } from "react";
-import { DataGrid, type GridColDef, type GridRenderCellParams } from "@mui/x-data-grid";
-import type { Media } from "@components/internal/encoder/type";
-import { Box, Chip, LinearProgress, Typography } from "@mui/material";
-import { Description } from "@mui/icons-material";
-import { convertSizeToHumanFormat } from "@view/utils/data.utils";
-import { SpecialEncodingProgressValues } from "@modules/encoder/encoder.async.actions";
+import { Tooltip } from "@mui/material";
+import { convertSizeToHumanFormat, formatSizeChange } from "@view/utils/data.utils";
+import type { EncodePhase } from "@shared/types/ffmpeg.types";
+import { encodersSelectors, type QueueRow } from "@modules/encoder/encoders.selectors";
+import { analyzeProgressFraction, DEFAULT_ENCODER_SETTINGS, ENCODER_PROFILES } from "@shared/encoder/encoder.profiles";
 
-const statusLabels: Record<string, string> = {
-	InProgress: "In Progress",
-	Pending: "Pending",
-	Converted: "Converted",
-	Aborted: "Aborted",
+/** Label and tone of each phase; the tone drives the dot, the label and the progress line */
+const phases: Record<EncodePhase, { label: string; tone: "idle" | "active" | "done" | "muted" | "error" }> = {
+	pending: { label: "Waiting", tone: "idle" },
+	analyzing: { label: "Analyzing", tone: "active" },
+	encoding: { label: "Encoding", tone: "active" },
+	remuxing: { label: "Remuxing", tone: "active" },
+	done: { label: "Converted", tone: "done" },
+	skipped: { label: "Skipped", tone: "muted" },
+	failed: { label: "Failed", tone: "error" },
+	aborted: { label: "Cancelled", tone: "error" },
 };
 
-function formatEta(seconds: number): string {
+function formatDuration(seconds: number): string {
 	if (!Number.isFinite(seconds) || seconds <= 0) return "";
 	const h = Math.floor(seconds / 3600);
 	const m = Math.floor((seconds % 3600) / 60);
 	const s = Math.floor(seconds % 60);
-	if (h > 0) return `${h}h${String(m).padStart(2, "0")}m`;
-	if (m > 0) return `${m}m${String(s).padStart(2, "0")}s`;
+	if (h > 0) return `${h}h${String(m).padStart(2, "0")}`;
+	if (m > 0) return `${m}m${String(s).padStart(2, "0")}`;
 	return `${s}s`;
 }
 
+/** Current time, refreshed every second while `active` (drives the remaining-time estimate) */
+function useNow(active: boolean): number {
+	const [now, setNow] = useState(() => Date.now());
+	useEffect(() => {
+		if (!active) return;
+		const timer = setInterval(() => setNow(Date.now()), 1000);
+		return () => clearInterval(timer);
+	}, [active]);
+	return now;
+}
+
+/**
+ * Encoding queue: one row per file. The rule under each row is its progress bar.
+ */
 export const EncoderDashboard = () => {
-	const files = useAppSelector((s) => s.media.data);
-	const progresses = useAppSelector((s) => s.encoder.processes.progress);
-	const startedAts = useAppSelector((s) => s.encoder.processes.startedAt);
+	const rows = useAppSelector(encodersSelectors.queue.rows);
+	const profileId = useAppSelector((s) => s.config.current.encoder?.profile ?? DEFAULT_ENCODER_SETTINGS.profile);
+	const qualityLabel = ENCODER_PROFILES[profileId].qualityLabel;
 
-	const fileStatus = useMemo(
-		() =>
-			files.reduce(
-				(acc, { file }) => {
-					const progress = progresses[file.path] || 0;
-
-					if (progress === 0) {
-						acc[file.path] = "Pending";
-					} else if (progress > 0 && progress <= 0.99) {
-						acc[file.path] = "InProgress";
-					} else if (progress === SpecialEncodingProgressValues.Aborted) {
-						acc[file.path] = "Aborted";
-					} else {
-						acc[file.path] = "Converted";
-					}
-					return acc;
-				},
-				{} as Record<string, FileStatus>
-			),
-		[files, progresses]
+	return (
+		<ul className="EncoderQueue" aria-label="Encoding queue">
+			{rows.map((row) => (
+				<QueueRowItem key={row.path} row={row} qualityLabel={qualityLabel} />
+			))}
+		</ul>
 	);
-
-	const rows = useMemo((): MediaWithEncoderProps[] => {
-		return files.map(({ file, property }): MediaWithEncoderProps => ({
-			file,
-			property,
-			status: fileStatus[file.path],
-			progress: progresses[file.path] || 0,
-			startedAt: startedAts[file.path] ?? 0,
-		}));
-	}, [files, fileStatus, progresses, startedAts]);
-
-	const columns: GridColDef<MediaWithEncoderProps>[] = [
-		{
-			field: "name",
-			headerName: "File",
-			flex: 1,
-			minWidth: 250,
-			align: "center",
-			headerAlign: "center",
-			renderCell: (params: EncoderGridRenderCellParams) => (
-				<Box sx={{ display: "flex", alignItems: "center", gap: 1, height: "100%" }}>
-					<Description sx={{ fontSize: 20, color: "text.secondary" }} />
-					<Box sx={{ minWidth: 0 }}>
-						<Typography variant="body2" noWrap sx={{ fontWeight: 500 }} title={params.row.file.name}>
-							{params.row.file.name}
-						</Typography>
-					</Box>
-				</Box>
-			),
-		},
-		{
-			field: "size",
-			headerName: "Size",
-			width: 130,
-			sortable: false,
-			filterable: false,
-			disableColumnMenu: true,
-			align: "center",
-			headerAlign: "center",
-			valueGetter: (_, row) => convertSizeToHumanFormat(row.file.size),
-		},
-		{
-			field: "status",
-			headerName: "Status",
-			width: 140,
-			sortable: false,
-			filterable: false,
-			disableColumnMenu: true,
-			align: "center",
-			headerAlign: "center",
-			renderCell: (params: EncoderGridRenderCellParams) => (
-				<Chip label={statusLabels[params.row.status]} size="small" variant="outlined" color={getStatusColor(params.row.status)} sx={{ height: 24, fontSize: "0.75rem" }} />
-			),
-		},
-		{
-			field: "progress",
-			headerName: "Progress",
-			minWidth: 200,
-			sortable: false,
-			filterable: false,
-			disableColumnMenu: true,
-			align: "center",
-			headerAlign: "center",
-			renderCell: (params: EncoderGridRenderCellParams) => {
-				const { progress, status, startedAt } = params.row;
-				const pct = Math.min(progress * 100, 100);
-
-				let eta = "";
-				if (status === "InProgress" && progress > 0.01 && startedAt > 0) {
-					const elapsed = (Date.now() - startedAt) / 1000;
-					const remaining = (elapsed / progress) * (1 - progress);
-					eta = formatEta(remaining);
-				}
-
-				return (
-					<Box sx={{ display: "flex", alignItems: "center", gap: 1.5, width: "100%", height: "100%" }}>
-						<LinearProgress
-							variant="determinate"
-							value={pct}
-							color={status === "Converted" ? "success" : "primary"}
-							sx={{ flexGrow: 1, height: 6, borderRadius: 3, bgcolor: "action.hover" }}
-						/>
-						<Typography
-							sx={{
-								fontFamily: "var(--font-mono)",
-								fontSize: "0.65rem",
-								color: "var(--text-muted)",
-								minWidth: 72,
-								textAlign: "right",
-								whiteSpace: "nowrap",
-							}}
-						>
-							{status === "InProgress" ? `${pct.toFixed(0)}%${eta ? ` · ${eta}` : ""}` : status === "Converted" ? "Done" : ""}
-						</Typography>
-					</Box>
-				);
-			},
-		},
-	];
-
-	return <DataGrid sx={{ height: "100%" }} hideFooter getRowId={(r) => r.file.path} columns={columns} rows={rows} />;
 };
 
-type FileStatus = "InProgress" | "Pending" | "Converted" | "Aborted";
+function QueueRowItem({ row: { path, name, size, state }, qualityLabel }: { row: QueueRow; qualityLabel: string }) {
+	const file = { path, name, size };
+	const progress = state.progress ?? 0;
+	const startedAt = state.startedAt ?? 0;
+	const { label, tone } = phases[state.phase];
+	const running = state.phase === "encoding" || state.phase === "remuxing";
+	const now = useNow(running);
 
-type MediaWithEncoderProps = Media & {
-	status: FileStatus;
-	progress: number;
-	startedAt: number;
-};
-
-type EncoderGridRenderCellParams = GridRenderCellParams<MediaWithEncoderProps>;
-
-const getStatusColor = (status: FileStatus): "default" | "primary" | "secondary" | "error" | "info" | "success" | "warning" => {
-	switch (status) {
-		case "InProgress":
-			return "primary";
-		case "Converted":
-			return "success";
-		case "Aborted":
-			return "error";
-		default:
-			return "default";
+	let timing = "";
+	if (running && progress > 0.01 && startedAt > 0) {
+		const elapsed = Math.max(0, now - startedAt) / 1000;
+		timing = `${formatDuration((elapsed / progress) * (1 - progress))} left`;
 	}
-};
+
+	const analysis = state.phase === "analyzing" ? state.analysis : undefined;
+	const analyzed = analysis ? analyzeProgressFraction(analysis) : 0;
+
+	if (state.phase === "analyzing") {
+		timing = analysis
+			? `Round ${analysis.round} · testing ${qualityLabel} ${analysis.quality} · ${analysis.samplesMeasured}/${analysis.samplesTotal} samples measured`
+			: "Preparing samples…";
+	}
+
+	const fill = state.phase === "done" ? 1 : running ? progress : analysis ? analyzed : 0;
+
+	return (
+		<li className={`EncoderQueue__row EncoderQueue__row--${tone}`}>
+			<div className="EncoderQueue__line">
+				<span className="EncoderQueue__name" title={file.path}>
+					{file.name}
+				</span>
+				<span className="EncoderQueue__status">
+					<span className="EncoderQueue__dot" aria-hidden />
+					{label}
+					{(running || analysis) && <span className="EncoderQueue__percent">{Math.round((running ? progress : analyzed) * 100)} %</span>}
+				</span>
+			</div>
+
+			<div className="EncoderQueue__line EncoderQueue__line--meta">
+				<span className="EncoderQueue__size">
+					{file.size > 0 && convertSizeToHumanFormat(file.size)}
+					{state.phase === "done" && state.outputSize !== undefined && (
+						<>
+							{" → "}
+							{convertSizeToHumanFormat(state.outputSize)}
+							<span className={`EncoderQueue__gain${state.outputSize > file.size ? " EncoderQueue__gain--larger" : ""}`}>
+								{formatSizeChange(file.size, state.outputSize)}
+							</span>
+						</>
+					)}
+				</span>
+
+				{state.note ? (
+					<span className="EncoderQueue__note" title={state.note}>
+						{state.note}
+					</span>
+				) : (
+					<span className="EncoderQueue__note" title={timing}>
+						{timing}
+					</span>
+				)}
+
+				{analysis && analysis.trials.length > 0 && (
+					<span className="EncoderQueue__trials">
+						{analysis.trials.map((trial) => (
+							<Tooltip key={trial.quality} title={`${qualityLabel} ${trial.quality}: ${trial.xpsnr.toFixed(2)} dB, target ${trial.reached ? "reached" : "missed"}`}>
+								<span className={`EncoderQueue__trial EncoderQueue__trial--${trial.reached ? "reached" : "missed"}`}>
+									{trial.quality} · {trial.xpsnr.toFixed(1)}
+								</span>
+							</Tooltip>
+						))}
+					</span>
+				)}
+
+				{state.quality !== undefined && state.xpsnr !== undefined && (
+					<Tooltip
+						title={
+							state.targetReached
+								? `${qualityLabel} ${state.quality} is the most compact value reaching the target on ${state.samples ?? 12} samples`
+								: `Target not reached: best quality of the range used`
+						}
+					>
+						<span className={`EncoderQueue__quality${state.targetReached ? "" : " EncoderQueue__quality--missed"}`}>
+							{qualityLabel} {state.quality} · {state.xpsnr.toFixed(1)} dB
+						</span>
+					</Tooltip>
+				)}
+			</div>
+
+			<div className={`EncoderQueue__track${state.phase === "analyzing" && !analysis ? " EncoderQueue__track--scanning" : ""}`} aria-hidden>
+				<div className="EncoderQueue__fill" style={{ transform: `scaleX(${fill})` }} />
+			</div>
+		</li>
+	);
+}

@@ -6,6 +6,7 @@
 import type { IpcMainInvokeEvent } from "electron";
 import type { UpdateStatus } from "@shared/types/update.types";
 import type { OidcAuthStatus } from "@shared/types/auth.types";
+import type { EncoderQueueStatus } from "@shared/types/ffmpeg.types";
 import type { SshCommandChunkEvent, SshCommandCompletedEvent, SshConnectionStatusEvent, SshTransferProgressEvent } from "@shared/types/ssh.types";
 
 export type IpcSentEvents = {
@@ -27,29 +28,9 @@ export type IpcSentEvents = {
 	"auth:oidc:status": (event: IpcMainInvokeEvent, statuses: OidcAuthStatus[]) => void;
 
 	/**
-	 * La sortie standard d'un process spawn
-	 * @param event Événement IPC
-	 * @param pid Identifiant du process
-	 * @param data Donnée reçue sur la sortie standard
+	 * État de la file d'encodage, à chaque changement (phase d'un fichier, progression, résultat d'analyse)
 	 */
-	"process:spawn:stdout": (event: IpcMainInvokeEvent, pid: string, data: string) => void;
-
-	/**
-	 * La sortie d'erreur d'un process spawn
-	 * @param event Événement IPC
-	 * @param pid Identifiant du process
-	 * @param data Donnée reçue sur la sortie d'erreur
-	 */
-	"process:spawn:stderr": (event: IpcMainInvokeEvent, pid: string, data: string) => void;
-
-	/**
-	 * Événement de fin d'un process spawn
-	 * @param event Événement IPC
-	 * @param pid Identifiant du process
-	 * @param code Code de sortie du process
-	 * @param signal Signal de sortie du process
-	 */
-	"process:spawn:exit": (event: IpcMainInvokeEvent, pid: string, code: number | null, signal: NodeJS.Signals | null) => void;
+	"encoder:status": (event: IpcMainInvokeEvent, status: EncoderQueueStatus) => void;
 	"ssh:connection:status": (event: IpcMainInvokeEvent, payload: SshConnectionStatusEvent) => void;
 	"ssh:transfer:progress": (event: IpcMainInvokeEvent, payload: SshTransferProgressEvent) => void;
 	"ssh:command:chunk": (event: IpcMainInvokeEvent, payload: SshCommandChunkEvent) => void;

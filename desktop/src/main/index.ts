@@ -12,6 +12,8 @@ import { MainContextModule } from "@main/modules/context/main.context.module";
 import { TrayIconModule } from "@main/modules/trayicon.module";
 import { LlmUsageModule } from "@main/modules/llm-usage/llm-usage.module";
 import { OidcModule } from "@main/modules/auth/oidc.module";
+import { EncoderQueueModule } from "@main/modules/encoder/encoder-queue.module";
+import { ProcessModule } from "@main/modules/process/process.module";
 
 const hasSingleInstanceLock = app.requestSingleInstanceLock();
 
@@ -72,6 +74,12 @@ if (hasSingleInstanceLock) {
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
+// ffmpeg processes are not children Windows ends with the app: analyses and encodes are stopped explicitly
+app.on("before-quit", () => {
+	void mainContainer.get(EncoderQueueModule).cancel();
+	mainContainer.get(ProcessModule).killAll();
+});
+
 app.on("window-all-closed", () => {
 	if (process.platform !== "darwin") {
 		app.quit();

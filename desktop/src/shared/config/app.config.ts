@@ -1,4 +1,5 @@
 import { BrowserWindowConstructorOptions } from "electron";
+import type { EncoderSettings } from "@shared/types/ffmpeg.types";
 
 export type PartialRecord<K extends keyof any, T> = Partial<Record<K, T>>;
 
@@ -24,9 +25,9 @@ export type SshConfiguration = {
 	folders: SshFolderConfiguration[];
 };
 
-export type LocalConfig = LocalConfigV1 | LocalConfigV2 | LocalConfigV3 | LocalConfigV4 | LocalConfigV5 | LocalConfigV6 | LocalConfigV7;
+export type LocalConfig = LocalConfigV1 | LocalConfigV2 | LocalConfigV3 | LocalConfigV4 | LocalConfigV5 | LocalConfigV6 | LocalConfigV7 | LocalConfigV8;
 
-export type LatestConfig = LocalConfigV7;
+export type LatestConfig = LocalConfigV8;
 
 export type PositionWindowKey = "main";
 
@@ -175,5 +176,10 @@ export function channelOfVersion(version: string): UpdateChannel {
 export function readUpdateSettings(saved: Partial<UpdateSettings> | undefined, currentVersion: string): UpdateSettings {
 	return { autoCheck: true, channel: channelOfVersion(currentVersion), ...saved };
 }
+
+export type LocalConfigV8 = Omit<LocalConfigV7, "version"> & {
+	version: 8;
+	encoder: EncoderSettings;
+};
 
 export type WindowPosition = Pick<BrowserWindowConstructorOptions, "x" | "y" | "width" | "height">;

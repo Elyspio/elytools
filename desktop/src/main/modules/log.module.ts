@@ -24,6 +24,14 @@ export class LogModule {
 	}
 
 	/**
+	 * Installed builds log from "info": the debug lines (each process started, each periodic check) drown the rest.
+	 * Development and `--debug` / ELYTOOLS_DEBUG keep everything.
+	 */
+	private static level(): "debug" | "info" {
+		return mainContainer.get(MainContextModule).allowDebug ? "debug" : "info";
+	}
+
+	/**
 	 *
 	 * @param name
 	 * @param filename
@@ -37,7 +45,7 @@ export class LogModule {
 					prettyPrint: true,
 				})
 			),
-			level: "debug",
+			level: LogModule.level(),
 			transports: [
 				new winston.transports.Console(),
 				new winston.transports.File({

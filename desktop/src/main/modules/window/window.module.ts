@@ -48,6 +48,10 @@ export class WindowModule extends LogModule {
 			title: mainConfig.names.public,
 			autoHideMenuBar: true,
 			webPreferences: {
+				// Electron defaults, stated: the window only reaches the system through the preload bridge
+				contextIsolation: true,
+				sandbox: true,
+				nodeIntegration: false,
 				nodeIntegrationInSubFrames: false,
 				preload: join(__dirname, "../preload/index.js"),
 				devTools: this.mainContextModule.allowDebug,

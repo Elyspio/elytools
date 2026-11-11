@@ -1,6 +1,7 @@
 import { ipcRendererWrapper } from "./preload.ipc.wrapper";
 import type { UpdateStatus } from "@shared/types/update.types";
 import type { OidcAuthStatus } from "@shared/types/auth.types";
+import type { EncoderQueueStatus } from "@shared/types/ffmpeg.types";
 import { SshCommandChunkEvent, SshCommandCompletedEvent, SshConnectionStatusEvent, SshTransferProgressEvent } from "@shared/types/ssh.types";
 
 export function getIpcReceiver() {
@@ -21,23 +22,11 @@ export function getIpcReceiver() {
 				},
 			},
 		},
-		process: {
-			spawn: {
-				stdout: (callback: (pid: string, data: string) => void | Promise<void>) => {
-					return ipcRendererWrapper.onAndGetRemover("process:spawn:stdout", (_, pid, data) => {
-						void callback(pid, data);
-					});
-				},
-				stderr: (callback: (pid: string, data: string) => void | Promise<void>) => {
-					return ipcRendererWrapper.onAndGetRemover("process:spawn:stderr", (_, pid, data) => {
-						void callback(pid, data);
-					});
-				},
-				exit: (callback: (pid: string, code: number | null) => void | Promise<void>) => {
-					return ipcRendererWrapper.onAndGetRemover("process:spawn:exit", (_, pid, code) => {
-						void callback(pid, code);
-					});
-				},
+		encoder: {
+			status: (callback: (status: EncoderQueueStatus) => void) => {
+				return ipcRendererWrapper.onAndGetRemover("encoder:status", (_, status) => {
+					callback(status);
+				});
 			},
 		},
 		ssh: {
