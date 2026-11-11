@@ -15,6 +15,13 @@ export type EncoderProfile = {
 	sampleParallelism: number;
 	/** Episodes encoded at the same time (3 NVENC engines on a RTX 5090, SVT-AV1 already uses every core) */
 	fileParallelism: number;
+	/** Encoder sessions the driver allows at once, shared by the encodes and the analysis samples; null without a limit */
+	sessionLimit: number | null;
+	/**
+	 * How the analysis and the encodes share the machine. "overlap": the next files are analyzed while others encode
+	 * (GPU). "alternate": a file is analyzed, then encoded, then the next one (both stages use every CPU core).
+	 */
+	pipeline: "overlap" | "alternate";
 	/** Encoder arguments for the video stream designated by `stream` (e.g. `v:0`) */
 	videoArgs: (quality: number, stream: string) => string[];
 };
@@ -47,6 +54,9 @@ const nvencArgs = (codec: string, extra: (stream: string) => string[]) => (quali
 	...extra(stream),
 ];
 
+/** Concurrent NVENC sessions allowed by the NVIDIA driver */
+export const NVENC_SESSION_LIMIT = 12;
+
 export const ENCODER_PROFILES: Record<EncoderProfileId, EncoderProfile> = {
 	av1_nvenc: {
 		id: "av1_nvenc",
@@ -57,6 +67,8 @@ export const ENCODER_PROFILES: Record<EncoderProfileId, EncoderProfile> = {
 		qualityRange: { min: 22, max: 36 },
 		sampleParallelism: 12,
 		fileParallelism: 3,
+		sessionLimit: NVENC_SESSION_LIMIT,
+		pipeline: "overlap",
 		videoArgs: nvencArgs("av1_nvenc", () => []),
 	},
 	hevc_nvenc: {
@@ -68,6 +80,8 @@ export const ENCODER_PROFILES: Record<EncoderProfileId, EncoderProfile> = {
 		qualityRange: { min: 16, max: 32 },
 		sampleParallelism: 12,
 		fileParallelism: 3,
+		sessionLimit: NVENC_SESSION_LIMIT,
+		pipeline: "overlap",
 		videoArgs: nvencArgs("hevc_nvenc", (stream) => [`-profile:${stream}`, "main10"]),
 	},
 	libsvtav1: {
@@ -79,6 +93,8 @@ export const ENCODER_PROFILES: Record<EncoderProfileId, EncoderProfile> = {
 		qualityRange: { min: 18, max: 40 },
 		sampleParallelism: 4,
 		fileParallelism: 1,
+		sessionLimit: null,
+		pipeline: "alternate",
 		videoArgs: (quality, stream) => [
 			`-c:${stream}`,
 			"libsvtav1",
@@ -182,46 +198,78 @@ export function computeSamplePositions(duration: number, count: number, length =
 
 export type QualitySearchResult = { quality: number; xpsnr: number; targetReached: boolean };
 
-/**
- * Finds the highest quality value (smallest file) whose XPSNR still reaches the target.
- * XPSNR decreases when the quality value increases, so a binary search needs about log2(range) measures.
- */
-/** Rounds a binary search over the range needs at most */
-export function maxSearchRounds(range: { min: number; max: number }): number {
-	return Math.floor(Math.log2(range.max - range.min + 1)) + 1;
-}
+/** Rounds the search usually needs: a first measure, the predicted value, then its neighbour as a check */
+export const EXPECTED_SEARCH_ROUNDS = 3;
+
+/** XPSNR lost per step of CQ/CRF, as measured on anime sources (0.16 to 0.20 dB); used until two measures exist */
+const DEFAULT_QUALITY_SLOPE = 0.18;
+
+/** Predicted rounds before falling back to halving the range, so a source off the usual curve still ends quickly */
+const PREDICTED_ROUNDS = 4;
 
 /** Share of an analysis done (0–1): every sample counts half when encoded, half when measured */
 export function analyzeProgressFraction(progress: FfmpegAnalyzeProgress): number {
-	const rounds = Math.max(progress.maxRounds, progress.round);
+	const rounds = Math.max(progress.expectedRounds, progress.round);
 	const roundShare = progress.samplesTotal > 0 ? (progress.samplesEncoded + progress.samplesMeasured) / (2 * progress.samplesTotal) : 0;
 	return Math.min(1, (progress.round - 1 + roundShare) / rounds);
 }
 
+/**
+ * Finds the highest quality value (smallest file) whose XPSNR still reaches the target.
+ *
+ * XPSNR decreases almost linearly when the quality value increases: after the first measure (middle of the range),
+ * the next value is predicted from the measures so far instead of halving the range. A typical source needs three
+ * measures: the middle, the predicted value, and its neighbour to confirm it is the last one reaching the target.
+ */
 export async function searchQuality(range: { min: number; max: number }, target: number, measure: (quality: number) => Promise<number>): Promise<QualitySearchResult> {
-	const cache = new Map<number, number>();
+	const measures = new Map<number, number>();
 	const measureOnce = async (quality: number) => {
-		if (!cache.has(quality)) cache.set(quality, await measure(quality));
-		return cache.get(quality)!;
+		if (!measures.has(quality)) measures.set(quality, await measure(quality));
+		return measures.get(quality)!;
 	};
 
 	let low = range.min;
 	let high = range.max;
 	let best: QualitySearchResult | null = null;
+	let probe = Math.floor((low + high) / 2);
 
 	while (low <= high) {
-		const middle = Math.floor((low + high) / 2);
-		const xpsnr = await measureOnce(middle);
+		const xpsnr = await measureOnce(probe);
 
 		if (xpsnr >= target) {
-			best = { quality: middle, xpsnr, targetReached: true };
-			low = middle + 1;
+			best = { quality: probe, xpsnr, targetReached: true };
+			low = probe + 1;
 		} else {
-			high = middle - 1;
+			high = probe - 1;
 		}
+
+		if (low > high) break;
+
+		const predicted = measures.size < PREDICTED_ROUNDS ? predictQuality(measures, target) : Math.floor((low + high) / 2);
+		probe = Math.min(high, Math.max(low, predicted));
 	}
 
 	return best ?? { quality: range.min, xpsnr: await measureOnce(range.min), targetReached: false };
+}
+
+/**
+ * Highest quality value expected to reach the target, from the line through the two measures closest to it
+ * (or the default slope with a single measure).
+ */
+function predictQuality(measures: Map<number, number>, target: number): number {
+	const closest = [...measures].sort((a, b) => Math.abs(a[1] - target) - Math.abs(b[1] - target));
+	const [quality, xpsnr] = closest[0];
+	let slope = DEFAULT_QUALITY_SLOPE;
+
+	if (closest.length > 1) {
+		const [otherQuality, otherXpsnr] = closest[1];
+		const measured = (otherXpsnr - xpsnr) / (quality - otherQuality);
+		// A flat or inverted pair (noise between close values) would send the prediction far away
+		if (Number.isFinite(measured)) slope = Math.min(0.5, Math.max(0.05, measured));
+	}
+
+	// The epsilon keeps a prediction landing exactly on a value from being rounded down by floating point error
+	return Math.floor(quality + (xpsnr - target) / slope + 1e-6);
 }
 
 /** Every video (cover pictures included), audio, subtitle and attachment (fonts) stream. Data streams cannot go in MKV. */
@@ -258,6 +306,16 @@ export function computeVideoStatistics(packetSizes: string, duration: number): V
 
 	const bytes = sizes.reduce((acc, size) => acc + size, 0);
 	return { bps: Math.round((bytes * 8) / duration), bytes, frames: sizes.length };
+}
+
+/** Temporary copy written while the statistics tags are added */
+export function getStatisticsFilePath(filePath: string): string {
+	return `${filePath}.stats.mkv`;
+}
+
+/** mkvpropedit (MKVToolNix) computes and writes the statistics tags of every track in place, without a copy */
+export function buildMkvpropeditArgs(file: string): string[] {
+	return [file, "--add-track-statistics-tags"];
 }
 
 /**
@@ -382,9 +440,6 @@ export function getConvertedFilePath(filePath: string): string {
 	return `${filePath}.elytools-tmp.mkv`;
 }
 
-/**
- * Final path of a converted file: the source path with an `.mkv` extension.
- */
 /** Video containers the encoder accepts: other files of a folder (.nfo, posters, subtitles…) are left out */
 export const VIDEO_EXTENSIONS = new Set(["mkv", "mp4", "m4v", "mov", "avi", "webm", "ts", "m2ts", "mts", "wmv", "flv", "mpg", "mpeg", "ogv", "3gp"]);
 
@@ -393,6 +448,9 @@ export function isVideoFile(filePath: string): boolean {
 	return extension !== undefined && VIDEO_EXTENSIONS.has(extension);
 }
 
+/**
+ * Final path of a converted file: the source path with an `.mkv` extension.
+ */
 export function getFinalFilePath(filePath: string): string {
 	return `${stripExtension(filePath)}.mkv`;
 }
@@ -440,6 +498,6 @@ export async function findAvailablePath(path: string, exists: (candidate: string
 	}
 }
 
-function basename(filePath: string) {
+export function basename(filePath: string) {
 	return filePath.substring(Math.max(filePath.lastIndexOf("/"), filePath.lastIndexOf("\\")) + 1);
 }

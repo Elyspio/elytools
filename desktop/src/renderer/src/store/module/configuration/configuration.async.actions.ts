@@ -1,6 +1,6 @@
 import { ConfigurationService } from "@services/configuration.service";
 import { createAsyncActionGenerator, getServices } from "../../utils/utils.actions";
-import { addProcessStd, completeProcess } from "@modules/process/process.actions";
+import { watchEncoderQueue } from "@modules/encoder/encoder.async.actions";
 import { LatestConfig } from "@shared/config/app.config";
 import { SystemService } from "@services/system/system.service";
 import { setAuthStatuses, setSystemInformation } from "@modules/configuration/configuration.actions";
@@ -99,15 +99,5 @@ export const initApp = createAsyncThunk("init-app", async (_, { dispatch }) => {
 	window.preload.ipc.on.auth.oidc.status((statuses) => dispatch(setAuthStatuses(statuses)));
 	void dispatch(refreshAuthStatuses());
 
-	window.preload.ipc.on.process.spawn.exit((pid, code) => {
-		dispatch(completeProcess({ pid, exitStatus: code ?? -1 }));
-	});
-
-	window.preload.ipc.on.process.spawn.stdout((pid, data) => {
-		dispatch(addProcessStd({ pid, type: "stdout", data }));
-	});
-
-	window.preload.ipc.on.process.spawn.stderr((pid, data) => {
-		dispatch(addProcessStd({ pid, type: "stderr", data }));
-	});
+	await dispatch(watchEncoderQueue());
 });

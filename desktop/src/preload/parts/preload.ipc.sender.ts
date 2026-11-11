@@ -2,12 +2,9 @@ import { ipcRendererWrapper } from "./preload.ipc.wrapper";
 import { GetInformationKey, GetInformationResult } from "../../shared/ipc/ipc.handled.events";
 import { appIpcSender } from "./ipc/sender/app.sender.ipc.preload";
 import { LatestConfig, OidcProfile } from "@shared/config/app.config";
-import { ExecOptions, SpawnOptions } from "node:child_process";
 import { DirectoryEntry, GetFolderResult } from "@shared/types/dialog.types";
-import { ExecResult, SpawnResult } from "@shared/types/process.types";
 import { RmDirOptions } from "fs";
 import { Stats } from "node:fs";
-import { FfmpegAnalyzeOptions, FfmpegAnalyzeResult, FfmpegConvertOptions } from "@shared/types/ffmpeg.types";
 import { NyaaTorrentItem, TorrentAddResult, TorrentDownloadResult } from "@shared/types/torrent.types";
 import { OidcAuthStatus, OidcProfileInput, OidcSessionTokens } from "@shared/types/auth.types";
 import { LlmUsageStatus } from "@shared/types/llm-usage.types";
@@ -39,30 +36,20 @@ export function getIpcSender() {
 				return await ipcRendererWrapper.invoke("dialog:selectPaths", options);
 			},
 		},
+		encoder: {
+			start: async (paths: string[]) => {
+				return await ipcRendererWrapper.invoke("encoder:start", paths);
+			},
+			cancel: async () => {
+				return await ipcRendererWrapper.invoke("encoder:cancel");
+			},
+			getStatus: async () => {
+				return await ipcRendererWrapper.invoke("encoder:status:get");
+			},
+		},
 		process: {
-			exec: async (command: string, args: string[], options: ExecOptions): Promise<ExecResult> => {
-				return await ipcRendererWrapper.invoke("process:exec", command, args, options);
-			},
-			spawn: async (command: string, args: string[], options: SpawnOptions): Promise<SpawnResult> => {
-				return await ipcRendererWrapper.invoke("process:spawn", command, args, options);
-			},
-			kill: async (pid: string, signal: NodeJS.Signals | number) => {
-				return await ipcRendererWrapper.invoke("process:kill", pid, signal);
-			},
 			ffmpeg: {
 				isAvailable: async () => await ipcRendererWrapper.invoke("process:ffmpeg:get:available"),
-				convert: async (opts: FfmpegConvertOptions) => {
-					return await ipcRendererWrapper.invoke("process:ffmpeg:convert", opts);
-				},
-				analyze: async (opts: FfmpegAnalyzeOptions): Promise<FfmpegAnalyzeResult> => {
-					return await ipcRendererWrapper.invoke("process:ffmpeg:analyze", opts);
-				},
-				writeStatistics: async (file: string, videoStreamIndex: number) => {
-					return await ipcRendererWrapper.invoke("process:ffmpeg:statistics", file, videoStreamIndex);
-				},
-				cancelAnalyses: async () => {
-					return await ipcRendererWrapper.invoke("process:ffmpeg:analyze:cancel");
-				},
 				getEncoders: async () => {
 					return await ipcRendererWrapper.invoke("process:ffmpeg:get:encoders");
 				},
@@ -116,6 +103,9 @@ export function getIpcSender() {
 			},
 			async getMeta() {
 				return await ipcRendererWrapper.invoke("system:meta:get");
+			},
+			async queryGpu() {
+				return await ipcRendererWrapper.invoke("system:gpu:query");
 			},
 		},
 		update: {

@@ -24,9 +24,10 @@ export function Encoder() {
 
 	const isFfmpegInstalled = useAppSelector(encodersSelectors.ffmpeg.isAvailable);
 	const encoders = useAppSelector(encodersSelectors.ffmpeg.encoders);
-	const files = useAppSelector((s) => s.media.data);
-	const encoding = useAppSelector((s) => s.encoder.encoding);
-	const stopping = useAppSelector((s) => s.encoder.stopping);
+	const hasFiles = useAppSelector((s) => encodersSelectors.queue.rows(s).length > 0);
+	const hasSelection = useAppSelector((s) => s.media.data.length > 0);
+	const encoding = useAppSelector(encodersSelectors.queue.running);
+	const stopping = useAppSelector(encodersSelectors.queue.stopping);
 	const config = useAppSelector((s) => s.config.current);
 	const settings: EncoderSettings = config.encoder ?? DEFAULT_ENCODER_SETTINGS;
 
@@ -136,7 +137,7 @@ export function Encoder() {
 						</Stack>
 					</Box>
 
-					{files.length > 0 ? (
+					{hasFiles ? (
 						<Box className={"Encoder__dashboard"}>
 							<EncoderDashboard />
 						</Box>
@@ -147,7 +148,7 @@ export function Encoder() {
 						</Box>
 					)}
 
-					{files.length > 0 && (
+					{hasFiles && (
 						<Box className={"Encoder__footer"}>
 							<EncoderFooterSummary />
 
@@ -156,7 +157,13 @@ export function Encoder() {
 									{stopping ? "Stopping…" : "Cancel"}
 								</Button>
 							) : (
-								<Button size={"small"} variant="contained" startIcon={<PlayArrow />} disabled={!profileAvailable} onClick={() => actions.convert()}>
+								<Button
+									size={"small"}
+									variant="contained"
+									startIcon={<PlayArrow />}
+									disabled={!profileAvailable || !hasSelection}
+									onClick={() => actions.convert()}
+								>
 									Encode
 								</Button>
 							)}
@@ -201,17 +208,16 @@ function CustomXpsnrField({ value, disabled, onCommit }: { value: number; disabl
 }
 
 function EncoderFooterSummary() {
-	const files = useAppSelector((s) => s.media.data);
-	const states = useAppSelector((s) => s.encoder.processes.files);
+	const rows = useAppSelector(encodersSelectors.queue.rows);
 
-	const inputSize = files.reduce((acc, f) => acc + f.file.size, 0);
-	const done = files.filter((f) => states[f.file.path]?.phase === "done");
-	const doneBefore = done.reduce((acc, f) => acc + f.file.size, 0);
-	const doneAfter = done.reduce((acc, f) => acc + (states[f.file.path]?.outputSize ?? 0), 0);
+	const inputSize = rows.reduce((acc, row) => acc + row.size, 0);
+	const done = rows.filter((row) => row.state.phase === "done");
+	const doneBefore = done.reduce((acc, row) => acc + row.size, 0);
+	const doneAfter = done.reduce((acc, row) => acc + (row.state.outputSize ?? 0), 0);
 
 	return (
 		<Typography variant="caption" sx={{ color: "var(--text-muted)", fontFamily: "var(--font-mono)", fontSize: "0.7rem" }}>
-			{files.length} file{files.length !== 1 ? "s" : ""} &middot; {convertSizeToHumanFormat(inputSize)}
+			{rows.length} file{rows.length !== 1 ? "s" : ""} &middot; {convertSizeToHumanFormat(inputSize)}
 			{done.length > 0 &&
 				` · ${done.length} converted: ${convertSizeToHumanFormat(doneBefore)} → ${convertSizeToHumanFormat(doneAfter)} ${formatSizeChange(doneBefore, doneAfter)}`}
 		</Typography>

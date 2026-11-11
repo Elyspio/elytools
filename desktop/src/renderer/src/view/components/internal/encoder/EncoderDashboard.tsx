@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import { useAppSelector } from "@store";
 import { Tooltip } from "@mui/material";
 import { convertSizeToHumanFormat, formatSizeChange } from "@view/utils/data.utils";
-import type { EncodePhase, FileEncodeState } from "@modules/encoder/encoder.reducer";
+import type { EncodePhase } from "@shared/types/ffmpeg.types";
+import { encodersSelectors, type QueueRow } from "@modules/encoder/encoders.selectors";
 import { analyzeProgressFraction, DEFAULT_ENCODER_SETTINGS, ENCODER_PROFILES } from "@shared/encoder/encoder.profiles";
-import type { Media } from "@components/internal/encoder/type";
 
 /** Label and tone of each phase; the tone drives the dot, the label and the progress line */
 const phases: Record<EncodePhase, { label: string; tone: "idle" | "active" | "done" | "muted" | "error" }> = {
@@ -43,38 +43,23 @@ function useNow(active: boolean): number {
  * Encoding queue: one row per file. The rule under each row is its progress bar.
  */
 export const EncoderDashboard = () => {
-	const files = useAppSelector((s) => s.media.data);
-	const progresses = useAppSelector((s) => s.encoder.processes.progress);
-	const startedAts = useAppSelector((s) => s.encoder.processes.startedAt);
-	const states = useAppSelector((s) => s.encoder.processes.files);
+	const rows = useAppSelector(encodersSelectors.queue.rows);
 	const profileId = useAppSelector((s) => s.config.current.encoder?.profile ?? DEFAULT_ENCODER_SETTINGS.profile);
 	const qualityLabel = ENCODER_PROFILES[profileId].qualityLabel;
 
 	return (
 		<ul className="EncoderQueue" aria-label="Encoding queue">
-			{files.map((media) => (
-				<QueueRow
-					key={media.file.path}
-					media={media}
-					state={states[media.file.path] ?? { phase: "pending" }}
-					progress={progresses[media.file.path] ?? 0}
-					startedAt={startedAts[media.file.path] ?? 0}
-					qualityLabel={qualityLabel}
-				/>
+			{rows.map((row) => (
+				<QueueRowItem key={row.path} row={row} qualityLabel={qualityLabel} />
 			))}
 		</ul>
 	);
 };
 
-type QueueRowProps = {
-	media: Media;
-	state: FileEncodeState;
-	progress: number;
-	startedAt: number;
-	qualityLabel: string;
-};
-
-function QueueRow({ media: { file }, state, progress, startedAt, qualityLabel }: QueueRowProps) {
+function QueueRowItem({ row: { path, name, size, state }, qualityLabel }: { row: QueueRow; qualityLabel: string }) {
+	const file = { path, name, size };
+	const progress = state.progress ?? 0;
+	const startedAt = state.startedAt ?? 0;
 	const { label, tone } = phases[state.phase];
 	const running = state.phase === "encoding" || state.phase === "remuxing";
 	const now = useNow(running);
@@ -90,7 +75,7 @@ function QueueRow({ media: { file }, state, progress, startedAt, qualityLabel }:
 
 	if (state.phase === "analyzing") {
 		timing = analysis
-			? `Round ${analysis.round}/${Math.max(analysis.maxRounds, analysis.round)} · testing ${qualityLabel} ${analysis.quality} · ${analysis.samplesMeasured}/${analysis.samplesTotal} samples measured`
+			? `Round ${analysis.round} · testing ${qualityLabel} ${analysis.quality} · ${analysis.samplesMeasured}/${analysis.samplesTotal} samples measured`
 			: "Preparing samples…";
 	}
 
@@ -111,7 +96,7 @@ function QueueRow({ media: { file }, state, progress, startedAt, qualityLabel }:
 
 			<div className="EncoderQueue__line EncoderQueue__line--meta">
 				<span className="EncoderQueue__size">
-					{convertSizeToHumanFormat(file.size)}
+					{file.size > 0 && convertSizeToHumanFormat(file.size)}
 					{state.phase === "done" && state.outputSize !== undefined && (
 						<>
 							{" → "}
@@ -149,7 +134,7 @@ function QueueRow({ media: { file }, state, progress, startedAt, qualityLabel }:
 					<Tooltip
 						title={
 							state.targetReached
-								? `${qualityLabel} ${state.quality} is the most compact value reaching the target on 12 samples`
+								? `${qualityLabel} ${state.quality} is the most compact value reaching the target on ${state.samples ?? 12} samples`
 								: `Target not reached: best quality of the range used`
 						}
 					>

@@ -24,7 +24,6 @@ import {
 	getTargetXpsnr,
 	isFinalPathTaken,
 	isVideoFile,
-	maxSearchRounds,
 	analyzeProgressFraction,
 	parseXpsnr,
 	planSource,
@@ -96,27 +95,63 @@ describe("computeSamplePositions", () => {
 describe("searchQuality", () => {
 	// Measured on S03E04 with av1_nvenc: 22 → 43.5 dB, 30 → 42.2 dB, 34 → 41.5 dB
 	const curve = (cq: number) => 47 - cq * 0.16;
+	const range = { min: 22, max: 36 };
+
+	const search = async (target: number, measure: (cq: number) => number) => {
+		const measured: number[] = [];
+		const result = await searchQuality(range, target, async (cq) => {
+			measured.push(cq);
+			return measure(cq);
+		});
+		return { result, measured };
+	};
 
 	it("returns the highest CQ reaching the target", async () => {
-		const measured: number[] = [];
-		const result = await searchQuality({ min: 22, max: 36 }, 42, async (cq) => {
-			measured.push(cq);
-			return curve(cq);
-		});
+		const { result, measured } = await search(42, curve);
 
 		expect(result).toEqual({ quality: 31, xpsnr: curve(31), targetReached: true });
-		expect(measured.length).toBeLessThanOrEqual(4);
+		expect(measured.length).toBeLessThanOrEqual(3);
+	});
+
+	// Values logged for The Irregular at Magic High School S3 (target 42 dB)
+	it.each([
+		{ episode: "E01", values: { 29: 42.29, 30: 42.09, 31: 41.88, 33: 41.48 }, expected: 30 },
+		{ episode: "E02", values: { 25: 42.44, 27: 42.13, 28: 41.97, 29: 41.81 }, expected: 27 },
+		{ episode: "E03", values: { 22: 42.1, 23: 41.67, 25: 41.26, 29: 40.18 }, expected: 22 },
+	])("finds the logged answer of $episode in three measures", async ({ values, expected }) => {
+		const logged: Record<number, number | undefined> = values;
+		const { result, measured } = await search(42, (cq) => {
+			const xpsnr = logged[cq];
+			if (xpsnr === undefined) throw new Error(`CQ ${cq} was not needed by the search`);
+			return xpsnr;
+		});
+
+		expect(result.quality).toBe(expected);
+		expect(measured).toHaveLength(3);
+	});
+
+	it("never measures a value twice and stays in the range on a curve far from the usual slope", async () => {
+		for (const slope of [0.02, 0.6, 1.5]) {
+			for (let answer = range.min; answer <= range.max; answer++) {
+				const { result, measured } = await search(42, (cq) => 42 + (answer - cq) * slope);
+
+				expect(result.quality).toBe(answer);
+				expect(new Set(measured).size).toBe(measured.length);
+				expect(measured.every((cq) => cq >= range.min && cq <= range.max)).toBe(true);
+				expect(measured.length).toBeLessThanOrEqual(8);
+			}
+		}
 	});
 
 	it("falls back to the best quality when the target is out of reach", async () => {
-		const result = await searchQuality({ min: 22, max: 36 }, 45, async (cq) => curve(cq));
+		const { result } = await search(45, curve);
 
 		expect(result.quality).toBe(22);
 		expect(result.targetReached).toBe(false);
 	});
 
 	it("returns the smallest file when every value reaches the target", async () => {
-		const result = await searchQuality({ min: 22, max: 36 }, 30, async (cq) => curve(cq));
+		const { result } = await search(30, curve);
 
 		expect(result.quality).toBe(36);
 	});
@@ -294,20 +329,14 @@ describe("isVideoFile", () => {
 });
 
 describe("analysis progress", () => {
-	it("bounds the rounds of the binary search", () => {
-		expect(maxSearchRounds({ min: 22, max: 36 })).toBe(4);
-		expect(maxSearchRounds({ min: 16, max: 32 })).toBe(5);
-		expect(maxSearchRounds({ min: 30, max: 30 })).toBe(1);
-	});
-
-	const progress = { input: "ep.mkv", round: 2, maxRounds: 4, quality: 33, samplesEncoded: 12, samplesMeasured: 6, samplesTotal: 12, trials: [] };
+	const progress = { round: 2, expectedRounds: 3, quality: 33, samplesEncoded: 12, samplesMeasured: 6, samplesTotal: 12, trials: [] };
 
 	it("counts each sample half when encoded, half when measured", () => {
-		expect(analyzeProgressFraction(progress)).toBeCloseTo((1 + 18 / 24) / 4);
+		expect(analyzeProgressFraction(progress)).toBeCloseTo((1 + 18 / 24) / 3);
 		expect(analyzeProgressFraction({ ...progress, round: 1, samplesEncoded: 0, samplesMeasured: 0 })).toBe(0);
 	});
 
-	it("stays within 0–1 when the fallback adds a round", () => {
+	it("stays within 0–1 when the search needs more rounds than usual", () => {
 		expect(analyzeProgressFraction({ ...progress, round: 5, samplesMeasured: 12 })).toBe(1);
 	});
 });

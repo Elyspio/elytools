@@ -41,13 +41,12 @@ export type AnalyzeTrial = {
 	reached: boolean;
 };
 
-/** Sent by the main process after each sample step of an analysis */
+/** Progress of an analysis, updated after each sample step */
 export type FfmpegAnalyzeProgress = {
-	input: string;
 	/** Round in progress (1-based): one CQ/CRF value measured per round */
 	round: number;
-	/** Rounds a binary search over the quality range needs at most */
-	maxRounds: number;
+	/** Rounds the search usually needs (it may take more on an unusual source) */
+	expectedRounds: number;
 	/** CQ/CRF measured by the round in progress */
 	quality: number;
 	samplesEncoded: number;
@@ -64,6 +63,45 @@ export type FfmpegAnalyzeResult = {
 	xpsnr: number;
 	/** Whether the target is reached at {@link quality} */
 	targetReached: boolean;
+	/** Samples the measure is based on */
+	samples: number;
+};
+
+export type EncodePhase = "pending" | "analyzing" | "encoding" | "remuxing" | "done" | "skipped" | "failed" | "aborted";
+
+/** State of one file of the encoder queue */
+export type FileEncodeState = {
+	phase: EncodePhase;
+	/** Size of the source when the run started, in bytes */
+	size?: number;
+	/** Why a file was skipped, remuxed or failed */
+	note?: string;
+	/** CQ/CRF chosen by the analysis */
+	quality?: number;
+	/** XPSNR (luma, dB) measured on the samples at {@link quality} */
+	xpsnr?: number;
+	/** Whether the XPSNR target was reached inside the quality range */
+	targetReached?: boolean;
+	/** Samples the analysis measured */
+	samples?: number;
+	/** Progress of the analysis in progress */
+	analysis?: FfmpegAnalyzeProgress;
+	/** Progress of the encode or remux in progress (0-1) */
+	progress?: number;
+	/** When the encode or remux started (ms since epoch) */
+	startedAt?: number;
+	/** Size of the converted file, in bytes */
+	outputSize?: number;
+};
+
+/** State of the encoder queue, owned by the main process and sent to the window at each change */
+export type EncoderQueueStatus = {
+	running: boolean;
+	/** A cancel is in progress: nothing can start until the run has settled */
+	stopping: boolean;
+	/** Files of the last run, in order */
+	order: string[];
+	files: Record<string, FileEncodeState>;
 };
 
 export type FfmpegConvertOptions = {

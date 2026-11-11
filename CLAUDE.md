@@ -4,14 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Elytools** — a cross-platform media toolbox with a desktop Electron app and a web stack (ASP.NET Core API + React frontend). Some features depend on private infrastructure; endpoints/credentials are configurable in settings.
+**Elytools** — a cross-platform media toolbox, built as a desktop Electron app. Some features depend on private infrastructure; endpoints/credentials are configurable in settings.
 
 ## Repository Layout
 
-- `desktop/` — Electron + React + TypeScript app (primary component)
-- `web/back/` — ASP.NET Core API + SignalR (.NET 10, MongoDB, Redis)
-- `web/front/` — React + Vite web client
-- `web/deploy/` — Docker build/deploy assets
+- `desktop/` — Electron + React + TypeScript app (the whole product)
+- `.github/workflows/` — CI: check and tests on every pull request
 
 ## Commands
 

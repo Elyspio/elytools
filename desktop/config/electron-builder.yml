@@ -41,3 +41,7 @@ electronFuses:
     enableEmbeddedAsarIntegrityValidation: true
     # (Optional, but recommended) Ensure Electron only loads app code from app.asar
     onlyLoadAppFromAsar: true
+    # The installed executable cannot be turned into a plain Node.js (ELECTRON_RUN_AS_NODE, NODE_OPTIONS, --inspect)
+    runAsNode: false
+    enableNodeOptionsEnvironmentVariable: false
+    enableNodeCliInspectArguments: false

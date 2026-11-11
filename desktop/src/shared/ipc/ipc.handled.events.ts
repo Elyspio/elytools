@@ -1,11 +1,9 @@
 import type { IpcMainInvokeEvent } from "electron";
 import type { LatestConfig, OidcProfile } from "../config/app.config";
 import type { GetInformationKey, GetInformationResult } from "./payload/ipc.system.payload";
-import type { ExecOptions, SpawnOptions } from "node:child_process";
 import type { DirectoryEntry, GetFolderResult, SelectPathsOptions } from "@shared/types/dialog.types";
-import type { ExecResult, SpawnResult } from "@shared/types/process.types";
 import { RmDirOptions, Stats } from "node:fs";
-import { Encoder, FfmpegAnalyzeOptions, FfmpegAnalyzeResult, FfmpegConvertOptions } from "@shared/types/ffmpeg.types";
+import type { Encoder, EncoderQueueStatus } from "@shared/types/ffmpeg.types";
 import type { FfprobeResult } from "@shared/types/ffprobe.types";
 import type { NyaaTorrentItem, TorrentAddResult, TorrentDownloadResult } from "@shared/types/torrent.types";
 import type { UpdateStatus } from "@shared/types/update.types";
@@ -53,24 +51,6 @@ export interface IpcHandledEvents {
 	"file:directory:size": (event: IpcMainInvokeEvent, filename: string) => Promise<number>;
 	"file:lstat": (event: IpcMainInvokeEvent, filename: string) => Promise<Stats>;
 	/**
-	 * Exécute une commande et retourne le résultat une fois terminée
-	 * @param event
-	 * @param command
-	 * @param args
-	 * @param options
-	 */
-	"process:exec": (event: IpcMainInvokeEvent, command: string, args: string[], options: ExecOptions) => Promise<ExecResult>;
-
-	/**
-	 * Lance une commande et retourne immédiatement l'id du process
-	 * @param event
-	 * @param command
-	 * @param args
-	 * @param options
-	 */
-	"process:spawn": (event: IpcMainInvokeEvent, command: string, args: string[], options: SpawnOptions) => Promise<SpawnResult>;
-
-	/**
 	 * Vérifie si ffmpeg est disponible sur le système
 	 */
 	"process:ffmpeg:get:available": (event: IpcMainInvokeEvent) => Promise<boolean>;
@@ -81,41 +61,31 @@ export interface IpcHandledEvents {
 	"process:ffmpeg:get:info": (event: IpcMainInvokeEvent, path: string) => Promise<FfprobeResult>;
 
 	/**
-	 * Convertit une vidéo avec ffmpeg
-	 * @param opts
-	 * @return l'id du process ffmpeg
-	 * @
-	 */
-	"process:ffmpeg:convert": (event: IpcMainInvokeEvent, opts: FfmpegConvertOptions) => Promise<string>;
-
-	/**
-	 * Cherche le CQ/CRF atteignant la cible XPSNR sur des extraits de la vidéo
-	 */
-	"process:ffmpeg:analyze": (event: IpcMainInvokeEvent, opts: FfmpegAnalyzeOptions) => Promise<FfmpegAnalyzeResult>;
-
-	/**
-	 * Écrit les statistiques du flux vidéo (débit, octets, images) dans un fichier converti, en place
-	 */
-	"process:ffmpeg:statistics": (event: IpcMainInvokeEvent, file: string, videoStreamIndex: number) => Promise<void>;
-
-	/**
-	 * Arrête les analyses en cours
-	 */
-	"process:ffmpeg:analyze:cancel": (event: IpcMainInvokeEvent) => void;
-
-	/**
 	 * Récupère la liste des encodeurs disponibles dans ffmpeg
 	 * @param event
 	 */
 	"process:ffmpeg:get:encoders": (event: IpcMainInvokeEvent) => Promise<Encoder[]>;
 
 	/**
-	 * Tue un process par son pid
-	 * @param event
-	 * @param pid id du process
-	 * @param signal signal à envoyer au process
+	 * Lance la conversion des fichiers avec les réglages de l'encodeur de la configuration.
+	 * Retourne une fois la file démarrée : la progression arrive par l'événement "encoder:status".
 	 */
-	"process:kill": (event: IpcMainInvokeEvent, pid: string, signal: NodeJS.Signals | number) => void;
+	"encoder:start": (event: IpcMainInvokeEvent, paths: string[]) => Promise<void>;
+
+	/**
+	 * Arrête la file d'encodage, retourne une fois les process arrêtés
+	 */
+	"encoder:cancel": (event: IpcMainInvokeEvent) => Promise<void>;
+
+	/**
+	 * État courant de la file d'encodage (une fenêtre rechargée retrouve la file en cours)
+	 */
+	"encoder:status:get": (event: IpcMainInvokeEvent) => EncoderQueueStatus;
+
+	/**
+	 * Sortie XML de `nvidia-smi -x -q`, null sans carte ou pilote NVIDIA
+	 */
+	"system:gpu:query": (event: IpcMainInvokeEvent) => Promise<string | null>;
 
 	"system:info:get": <T extends GetInformationKey>(event: IpcMainInvokeEvent, key: T) => GetInformationResult[T];
 	"system:meta:get": (event: IpcMainInvokeEvent) => Promise<{
