@@ -27,7 +27,6 @@ const nodeFs: PipelineFs = {
 	},
 
 	move: (from, to) => fs.promises.rename(from, to),
-
 	remove: (file) => fs.promises.rm(file, { force: true, maxRetries: 5 }),
 };
 
@@ -96,17 +95,12 @@ export class EncoderQueueModule extends LogModule {
 				fs: nodeFs,
 				tools: {
 					probe: (file) => this.ffmpeg.probe(file),
-
 					analyze: (opts, context) => this.ffmpeg.analyze(opts, context),
-
 					convert: (opts, context) => this.ffmpeg.convert(opts, context),
-
 					writeStatistics: (file, index, signal) => this.ffmpeg.writeStatistics(file, index, signal),
 				},
 				analysisCache: this.analysisCache,
-
 				update: (file, state) => this.update(file, state),
-
 				warn: (message, error) => this.logger.warn(message, { error }),
 			})
 				.catch((e) => this.logger.error("Encoder run failed", e))

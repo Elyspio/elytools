@@ -160,7 +160,6 @@ export class FfmpegProcessModule extends LogModule {
 		const result = await this.runEncoder(args, {
 			signal,
 			stallMs: CONVERT_STALL,
-
 			onStderr: (chunk) => {
 				const frame = [...chunk.matchAll(/frame=\s*(\d+)/g)].at(-1);
 				if (frame) onFrame(Number.parseInt(frame[1], 10));

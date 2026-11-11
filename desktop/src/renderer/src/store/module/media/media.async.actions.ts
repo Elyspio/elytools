@@ -38,7 +38,6 @@ export const scanPurgeTargets = createAsyncThunk("purge/scan", async ({ root, ma
 
 	const targets = await filesService.scanDirectoriesByName(root, matchNames, {
 		ignoreNames: IGNORE_DIR_NAMES,
-
 		progress: (scannedFolders) => {
 			const now = Date.now();
 			if (now - lastProgressAt < 200) return;

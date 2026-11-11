@@ -93,19 +93,16 @@ function harness({ files, codecs = {}, settings = DEFAULT_ENCODER_SETTINGS, outp
 
 	const defaults: PipelineTools = {
 		probe: async (target) => probe(codecs[name(target)] ?? "h264"),
-
 		analyze: async (opts) => {
 			events.push(`analyze ${name(opts.input)}`);
 			return { quality: 30, xpsnr: 42.1, targetReached: true, samples: 12 };
 		},
-
 		convert: async (opts) => {
 			events.push(`convert ${name(opts.files.input)}`);
 			const source = name(opts.files.input);
 			fs.files.set(opts.files.output, outputSizes[source] ?? Math.round((files[source] ?? 0) / 3));
 			events.push(`converted ${source}`);
 		},
-
 		writeStatistics: async (target) => {
 			events.push(`statistics ${name(target)}`);
 		},
@@ -117,7 +114,6 @@ function harness({ files, codecs = {}, settings = DEFAULT_ENCODER_SETTINGS, outp
 		events,
 		controller,
 		cache,
-
 		run: (overrides = {}) =>
 			runEncoderPipeline({
 				paths: Object.keys(files).map(file),
@@ -126,13 +122,10 @@ function harness({ files, codecs = {}, settings = DEFAULT_ENCODER_SETTINGS, outp
 				fs,
 				tools: { ...defaults, ...tools },
 				analysisCache: cache,
-
 				update: (target, state) => {
 					states[name(target)] = { ...(states[name(target)] ?? { phase: "pending" }), ...state };
 				},
-
 				now: () => 1000,
-
 				...overrides,
 			}),
 	};
@@ -280,7 +273,6 @@ describe("runEncoderPipeline", () => {
 					await gate.promise;
 					h.fs.files.set(opts.files.output, 300);
 				},
-
 				analyze: async (opts, { sessions }) => {
 					if (path.basename(opts.input) === "e2.mkv") {
 						// e1 is encoding: count the sessions a round of samples can take at once
@@ -315,16 +307,13 @@ describe("runEncoderPipeline", () => {
 		await first.run({
 			tools: {
 				probe: async () => probe("h264"),
-
 				analyze: async (opts) => {
 					analyses.push(opts.input);
 					return { quality: 1, xpsnr: 1, targetReached: true, samples: 1 };
 				},
-
 				convert: async (opts) => {
 					first.fs.files.set(opts.files.output, 300);
 				},
-
 				writeStatistics: async () => {},
 			},
 		});

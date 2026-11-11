@@ -95,7 +95,6 @@ export const ENCODER_PROFILES: Record<EncoderProfileId, EncoderProfile> = {
 		fileParallelism: 1,
 		sessionLimit: null,
 		pipeline: "alternate",
-
 		videoArgs: (quality, stream) => [
 			`-c:${stream}`,
 			"libsvtav1",

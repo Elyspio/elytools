@@ -30,7 +30,6 @@ const slice = createSlice({
 			delete state.sendStatuses[action.payload];
 		},
 	},
-
 	extraReducers: ({ addCase }) => {
 		addCase(searchTorrents.pending, (state) => {
 			state.loading = true;

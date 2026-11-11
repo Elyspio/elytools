@@ -30,7 +30,6 @@ export class TrayIconModule extends LogModule {
 			{
 				label: "Ouvrir",
 				type: "normal",
-
 				click: () => {
 					if (mainWindow && mainWindow.isVisible() && !mainWindow.isMinimized()) {
 						mainWindow.focus();
@@ -42,7 +41,6 @@ export class TrayIconModule extends LogModule {
 			{
 				label: "Envoyer l'usage LLM",
 				type: "normal",
-
 				click: () => {
 					void this.llmUsageModule.sync();
 				},
@@ -51,7 +49,6 @@ export class TrayIconModule extends LogModule {
 			{
 				label: "Quitter",
 				type: "normal",
-
 				click: () => {
 					app.exit(0);
 				},

@@ -22,7 +22,6 @@ const slice = createSlice({
 			state.queue = payload;
 		},
 	},
-
 	extraReducers: (builder) => {
 		builder.addCase(setupFfmpeg.fulfilled, (state, action) => {
 			if (!action.payload.isAvailable) {

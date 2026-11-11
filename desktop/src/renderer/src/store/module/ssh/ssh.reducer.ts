@@ -159,7 +159,6 @@ const slice = createSlice({
 			output.error = action.payload.error;
 		},
 	},
-
 	extraReducers: (builder) => {
 		builder.addCase(loadFolders.pending, (state) => {
 			state.folders.loading = true;

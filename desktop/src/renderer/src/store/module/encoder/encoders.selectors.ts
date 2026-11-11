@@ -47,14 +47,11 @@ const getQueueRows = createAppSelector([(state: StoreState) => state.media.data,
 export const encodersSelectors = {
 	queue: {
 		rows: getQueueRows,
-
 		running: (state: StoreState) => state.encoder.queue.running,
-
 		stopping: (state: StoreState) => state.encoder.queue.stopping,
 	},
 	ffmpeg: {
 		isAvailable: (state: StoreState) => !!state.encoder.ffmpeg,
-
 		encoders: getEncoders,
 	},
 };

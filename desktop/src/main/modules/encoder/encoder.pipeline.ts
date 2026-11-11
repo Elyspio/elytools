@@ -247,7 +247,6 @@ export async function runEncoderPipeline(options: PipelineOptions): Promise<void
 				},
 				{
 					signal,
-
 					onFrame: (frame) => {
 						if (frames > 0) update(job.path, { progress: Math.min(frame / frames, 0.99) });
 					},

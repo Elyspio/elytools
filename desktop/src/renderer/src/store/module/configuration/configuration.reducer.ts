@@ -15,7 +15,6 @@ export const slice = createSlice({
 	name: "configuration",
 	reducers: {},
 	initialState,
-
 	extraReducers: (builder) => {
 		// Saved right away from the Settings: the next change starts from this one, without waiting for the main process
 		builder.addCase(setConfig.pending, (state, action) => {

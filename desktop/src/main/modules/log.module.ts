@@ -49,19 +49,12 @@ export class LogModule {
 
 		const logger = {
 			log: (...args: unknown[]) => write("info", args),
-
 			info: (...args: unknown[]) => write("info", args),
-
 			debug: (...args: unknown[]) => write("debug", args),
-
 			warn: (...args: unknown[]) => write("warn", args),
-
 			error: (...args: unknown[]) => write("error", args),
-
 			verbose: (...args: unknown[]) => write("verbose", args),
-
 			fatal: (...args: unknown[]) => write("error", args),
-
 			structured: (level: "log" | "debug" | "error", message: string, fields: Record<string, unknown>) => write(level === "log" ? "info" : level, [message], fields),
 		};
 		return logger;

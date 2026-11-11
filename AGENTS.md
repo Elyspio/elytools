@@ -4,7 +4,7 @@ Rules for every coding agent working in this repository (Claude Code also reads 
 
 ## Code layout
 
-- Keep one blank line between function declarations, function-valued declarations, and class or object methods throughout the desktop app, including tests and scripts. Separate each from adjacent statements or members; keep its documentation and decorators attached.
+- Keep one blank line between function declarations, function-valued declarations, and class or object methods throughout the desktop app, including tests and scripts. Separate each from adjacent statements or members; keep its documentation and decorators attached. Keep object fields contiguous, including fields whose values are arrow functions; these fields do not require blank-line separation.
 
 ## Development builds
 

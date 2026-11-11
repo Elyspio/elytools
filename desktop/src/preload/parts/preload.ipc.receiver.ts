@@ -50,7 +50,6 @@ export function getIpcReceiver() {
 						callback(payload);
 					});
 				},
-
 				completed: (callback: (event: SshCommandCompletedEvent) => void) => {
 					return ipcRendererWrapper.onAndGetRemover("ssh:command:completed", (_, payload) => {
 						callback(payload);

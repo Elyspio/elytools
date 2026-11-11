@@ -25,7 +25,6 @@ export class Semaphore {
 						signal?.removeEventListener("abort", onAbort);
 						resolve();
 					},
-
 					cancel: reject,
 				};
 
