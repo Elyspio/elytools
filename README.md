@@ -26,7 +26,7 @@ The application also includes named OIDC profiles, encrypted credential storage,
 
 ### Requirements
 
-- **Node.js 26 or later** and **pnpm 12.5.1** for development.
+- **Node.js 26 or later** and **pnpm 12.18.0** for development.
 - **FFmpeg and FFprobe** available on `PATH` to use the Encoder.
 - Access to the external services you want to integrate, such as Home Assistant, SSH hosts, or an OIDC-protected qBittorrent endpoint.
 

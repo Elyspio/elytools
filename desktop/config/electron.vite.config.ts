@@ -17,6 +17,8 @@ export default defineConfig({
 	main: {
 		build: {
 			externalizeDeps: false,
+			// The bytecode plugin rewrites arrow functions with Babel, which cannot handle arrows in class fields (shipped as-is by @nestjs/common 12): lower class fields first
+			rolldownOptions: { transform: { target: "es2021" } },
 			bytecode: !disableMainBytecode,
 		},
 		resolve: {
