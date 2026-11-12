@@ -16,6 +16,8 @@ export default defineConfig({
 		...defaultLintConfig,
 		// core/apis holds the NSwag client of the removed web API: nothing imports it and axios is not a dependency anymore.
 		ignorePatterns: [...defaultLintConfig.ignorePatterns, ...ignorePatterns, "src/renderer/src/core/apis/**"],
+		// Deprecated APIs (Electron, Node, React, libraries) fail the check as soon as an upgrade flags them
+		rules: { ...defaultLintConfig.rules, "typescript/no-deprecated": "error" },
 	},
 	resolve: {
 		alias: convertPathToAlias(tsconfigNode.compilerOptions.paths, path.resolve(import.meta.dirname)),

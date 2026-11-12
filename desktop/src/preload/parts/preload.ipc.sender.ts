@@ -3,7 +3,7 @@ import { GetInformationKey, GetInformationResult } from "../../shared/ipc/ipc.ha
 import { appIpcSender } from "./ipc/sender/app.sender.ipc.preload";
 import { LatestConfig, OidcProfile } from "@shared/config/app.config";
 import { DirectoryEntry, GetFolderResult } from "@shared/types/dialog.types";
-import { RmDirOptions } from "fs";
+import type { RmOptions } from "node:fs";
 import { Stats } from "node:fs";
 import { NyaaTorrentItem, TorrentAddResult, TorrentDownloadResult } from "@shared/types/torrent.types";
 import { OidcAuthStatus, OidcProfileInput, OidcSessionTokens } from "@shared/types/auth.types";
@@ -72,7 +72,7 @@ export function getIpcSender() {
 				return await ipcRendererWrapper.invoke("file:temp:get", filename);
 			},
 
-			async delete(filepath: string, config?: RmDirOptions) {
+			async delete(filepath: string, config?: RmOptions) {
 				return await ipcRendererWrapper.invoke("file:delete", filepath, config);
 			},
 

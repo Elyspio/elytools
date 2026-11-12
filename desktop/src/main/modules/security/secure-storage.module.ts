@@ -19,19 +19,24 @@ export class SecureStorageModule {
 	public constructor(@inject(MainContextModule) private readonly mainContextModule: MainContextModule) {}
 
 	public async setSecret(key: SecretKey, value: string): Promise<void> {
-		this.ensureEncryptionAvailable();
-		await this.mutate((secrets) => {
-			secrets[key] = safeStorage.encryptString(value).toString("base64");
+		// Encrypting inside the queued change keeps writes and deletions in the order they were requested
+		await this.mutate(async (secrets) => {
+			await this.ensureEncryptionAvailable();
+			secrets[key] = await this.encrypt(value);
 			return true;
 		});
 	}
 
 	public async getSecret(key: SecretKey): Promise<string | undefined> {
-		this.ensureEncryptionAvailable();
+		await this.ensureEncryptionAvailable();
 		const secrets = await this.readSecrets();
 		const encrypted = secrets[key];
 		if (!encrypted) return undefined;
-		return safeStorage.decryptString(Buffer.from(encrypted, "base64"));
+		const { result, shouldReEncrypt } = await safeStorage.decryptStringAsync(Buffer.from(encrypted, "base64"));
+		if (shouldReEncrypt) {
+			await this.reEncrypt(key, encrypted, result);
+		}
+		return result;
 	}
 
 	public async deleteSecret(key: SecretKey): Promise<void> {
@@ -78,9 +83,29 @@ export class SecureStorageModule {
 		return `ssh-machine:${machineId}:private-key`;
 	}
 
-	private ensureEncryptionAvailable() {
-		if (!safeStorage.isEncryptionAvailable()) {
+	private async ensureEncryptionAvailable(): Promise<void> {
+		if (!(await safeStorage.isAsyncEncryptionAvailable())) {
 			throw new Error("Secure storage encryption is not available on this system");
+		}
+	}
+
+	private async encrypt(value: string): Promise<string> {
+		return (await safeStorage.encryptStringAsync(value)).toString("base64");
+	}
+
+	/**
+	 * Stores a secret again after its encryption key was rotated; a failure only delays it to the next read
+	 * @param previous encrypted value that was read: a secret changed in the meantime is left untouched
+	 */
+	private async reEncrypt(key: SecretKey, previous: string, value: string): Promise<void> {
+		try {
+			await this.mutate(async (secrets) => {
+				if (secrets[key] !== previous) return false;
+				secrets[key] = await this.encrypt(value);
+				return true;
+			});
+		} catch {
+			// The secret stays readable with its current encryption
 		}
 	}
 
@@ -92,10 +117,10 @@ export class SecureStorageModule {
 	 * Applies a change to the secrets file after the previous ones, so concurrent changes do not overwrite each other
 	 * @param change returns false when the file is left unchanged
 	 */
-	private async mutate(change: (secrets: SecretsFilePayload) => boolean): Promise<void> {
+	private async mutate(change: (secrets: SecretsFilePayload) => boolean | Promise<boolean>): Promise<void> {
 		const mutation = this.mutations.then(async () => {
 			const secrets = await this.readSecrets();
-			if (change(secrets)) {
+			if (await change(secrets)) {
 				await this.writeSecrets(secrets);
 			}
 		});

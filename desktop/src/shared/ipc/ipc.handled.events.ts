@@ -2,7 +2,7 @@ import type { IpcMainInvokeEvent } from "electron";
 import type { LatestConfig, OidcProfile } from "../config/app.config";
 import type { GetInformationKey, GetInformationResult } from "./payload/ipc.system.payload";
 import type { DirectoryEntry, GetFolderResult, SelectPathsOptions } from "@shared/types/dialog.types";
-import { RmDirOptions, Stats } from "node:fs";
+import { RmOptions, Stats } from "node:fs";
 import type { Encoder, EncoderQueueStatus } from "@shared/types/ffmpeg.types";
 import type { FfprobeResult } from "@shared/types/ffprobe.types";
 import type { NyaaTorrentItem, TorrentAddResult, TorrentDownloadResult } from "@shared/types/torrent.types";
@@ -42,7 +42,7 @@ export interface IpcHandledEvents {
 	"file:write": (event: IpcMainInvokeEvent, filePath: string, binaryContent: Uint8Array) => Promise<void>;
 	"file:read:text": (event: IpcMainInvokeEvent, filePath: string) => Promise<string>;
 	"file:temp:get": (event: IpcMainInvokeEvent, filename: string) => string;
-	"file:delete": (event: IpcMainInvokeEvent, filename: string, options?: RmDirOptions) => Promise<void>;
+	"file:delete": (event: IpcMainInvokeEvent, filename: string, options?: RmOptions) => Promise<void>;
 	"file:exists": (event: IpcMainInvokeEvent, filename: string) => Promise<boolean>;
 	"file:rename": (event: IpcMainInvokeEvent, from: string, to: string) => Promise<void>;
 	"file:directory:create": (event: IpcMainInvokeEvent, filename: string) => Promise<void>;
