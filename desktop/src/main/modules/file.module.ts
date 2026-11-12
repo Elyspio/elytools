@@ -1,5 +1,5 @@
 import { dialog, shell } from "electron";
-import { type Dirent, promises as fsPromises, type RmDirOptions } from "node:fs";
+import { type Dirent, promises as fsPromises, type RmOptions } from "node:fs";
 import { LogModule } from "./log.module";
 import { log } from "../utils/logs.utils";
 import { injectable } from "inversify";
@@ -126,7 +126,7 @@ export class FileModule extends LogModule {
 	}
 
 	@log.debug()
-	delete(filename: string, options: RmDirOptions | undefined) {
+	delete(filename: string, options: RmOptions | undefined) {
 		return fsPromises.rm(filename, options);
 	}
 
