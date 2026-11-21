@@ -188,8 +188,8 @@ importers:
         specifier: ^4.0.0
         version: 4.0.0(electron@45.3.0(supports-color@10.2.2))
       '@elyspio/llm-usage-collector':
-        specifier: ^0.3.0
-        version: 0.3.0
+        specifier: ^0.4.0
+        version: 0.4.0
       '@emotion/react':
         specifier: ^11.14.0
         version: 11.14.0(@types/react@19.3.0)(react@19.3.1)(supports-color@10.2.2)
@@ -592,8 +592,8 @@ packages:
     engines: {node: '>=14.14'}
     hasBin: true
 
-  '@elyspio/llm-usage-collector@0.3.0':
-    resolution: {integrity: sha512-ir3kKzt+C8NTQQtK9EJNOvlKSGAe+BnCqE04FSHjq34upyyI6BBirtJN1WkUfNm84pOC9QFmcgPLOfVmq/6DVQ==}
+  '@elyspio/llm-usage-collector@0.4.0':
+    resolution: {integrity: sha512-d1geGEY3RlPRpXflr+g50PAcuqSzUS0+ojvDtWFwPvkKEU2ZMgbWXH9AThShcEvsoujSo/xwtw9nGsuY0cuVPw==}
     engines: {node: '>=26'}
     hasBin: true
 
@@ -4412,7 +4412,7 @@ snapshots:
       - supports-color
     optional: true
 
-  '@elyspio/llm-usage-collector@0.3.0': {}
+  '@elyspio/llm-usage-collector@0.4.0': {}
 
   '@elyspio/vite-eslint-config@8.0.0-rc.0(@babel/runtime@8.1.0)(@voidzero-dev/vite-plus-core@1.5.1(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.108.1)(tsx@4.23.15)(typescript@7.0.2))(rolldown@1.2.18)(supports-color@10.2.2)(typescript@7.0.2)(vite-plus@1.5.1(@types/node@26.6.6)(@vitest/ui@5.1.0)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.108.1)(tsx@4.23.15)(typescript@7.0.2))':
     dependencies:

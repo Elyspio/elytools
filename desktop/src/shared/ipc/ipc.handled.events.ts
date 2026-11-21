@@ -131,7 +131,7 @@ export interface IpcHandledEvents {
 	"auth:oidc:tokens:get": (event: IpcMainInvokeEvent, profileId: string) => Promise<OidcSessionTokens>;
 	"llm-usage:status:get": (event: IpcMainInvokeEvent) => Promise<LlmUsageStatus>;
 	/**
-	 * Lit les nouveaux journaux Claude Code / Codex et envoie l'usage à LLM Usage Monitor
+	 * Lit les nouveaux journaux Claude Code / Codex / Copilot CLI et envoie l'usage à LLM Usage Monitor
 	 */
 	"llm-usage:sync": (event: IpcMainInvokeEvent) => Promise<LlmUsageStatus>;
 	"ssh:machines:list": (event: IpcMainInvokeEvent) => Promise<SshMachine[]>;
