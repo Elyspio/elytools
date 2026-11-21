@@ -70,7 +70,7 @@ export type AuthConfiguration = {
 };
 
 /**
- * Upload of the Claude Code and Codex token usage of this workstation to LLM Usage Monitor.
+ * Upload of the Claude Code, Codex and Copilot CLI token usage of this workstation to LLM Usage Monitor.
  */
 export type LlmUsageConfiguration = {
 	enabled: boolean;

@@ -11,7 +11,7 @@ const SYNC_INTERVAL_MS = 5 * 60_000;
 const FIRST_SYNC_DELAY_MS = 15_000;
 
 /**
- * Uploads the Claude Code and Codex token usage of this workstation to LLM Usage Monitor, every 5 minutes while the
+ * Uploads the Claude Code, Codex and Copilot CLI token usage of this workstation to LLM Usage Monitor, every 5 minutes while the
  * application runs (window closed included), through @elyspio/llm-usage-collector. Its data folder is shared with the
  * standalone collector (`llm-usage`): both upload as the same workstation and take turns.
  */

@@ -27,7 +27,7 @@ const sections: { key: SettingsSectionKey; label: string; description: string; i
 	{
 		key: "llmUsage",
 		label: "LLM usage",
-		description: "Claude Code and Codex token usage of this workstation, uploaded every 5 minutes (window closed included).",
+		description: "Claude Code, Codex and Copilot CLI token usage of this workstation, uploaded every 5 minutes (window closed included).",
 		icon: <InsightsIcon />,
 	},
 	{ key: "display", label: "Display", description: "Appearance of the window.", icon: <TuneIcon /> },
